@@ -77,5 +77,28 @@
     <None Include="shaders\text.vert">
       <Filter>Resource Files</Filter>
     </None>
+    <None Include="shaders\texture_demo.frag">
+      <Filter>Resource Files</Filter>
+    </None>
+    <None Include="shaders\texture_demo.vert">
+      <Filter>Resource Files</Filter>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <Image Include="stone.tga">
+      <Filter>Source Files</Filter>
+    </Image>
+    <Image Include="tablecloth.png">
+      <Filter>Source Files</Filter>
+    </Image>
+    <Image Include="checker.png">
+      <Filter>Source Files</Filter>
+    </Image>
+    <Image Include="lightwood.tga">
+      <Filter>Source Files</Filter>
+    </Image>
+    <Image Include="orangeTex.png">
+      <Filter>Source Files</Filter>
+    </Image>
   </ItemGroup>
 </Project>

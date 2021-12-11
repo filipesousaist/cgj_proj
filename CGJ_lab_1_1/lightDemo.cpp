@@ -31,7 +31,7 @@
 #include "AVTmathLib.h"
 #include "VertexAttrDef.h"
 #include "geometry.h"
-
+#include "Texture_Loader.h"
 #include "avtFreeType.h"
 
 using namespace std;
@@ -45,6 +45,7 @@ unsigned int FrameCount = 0;
 //shaders
 VSShaderLib shader;  //geometry
 VSShaderLib shaderText;  //render bitmap text
+VSShaderLib shaderT;  //Textures
 
 //File with the font
 const string font_name = "fonts/arial.ttf";
@@ -86,7 +87,10 @@ GLint pvm_uniformId;
 GLint vm_uniformId;
 GLint normal_uniformId;
 GLint lPos_uniformId;
-GLint tex_loc, tex_loc1, tex_loc2;
+GLint tex_loc, tex_loc1, tex_loc2, tex_loc3;
+GLint texMode_uniformId;
+
+GLuint TextureArray[4];
 	
 // Camera Position
 float camX, camY, camZ;
@@ -103,6 +107,15 @@ long myTime,timebase = 0,frame = 0;
 char s[32];
 float lightPos[4] = {4.0f, 6.0f, 2.0f, 1.0f};
 
+// Time variables
+float deltaTime;
+float previousTime;
+
+// Car properties
+float speed = 0;
+float accel = 0;
+float uniformAccel = 5.0f;
+float maxSpeed = 100.0f;
 
 void timer(int value)
 {
@@ -117,8 +130,8 @@ void timer(int value)
 
 void refresh(int value)
 {
-	glutTimerFunc(1000 / 60, refresh, 0);
 	glutPostRedisplay();
+	glutTimerFunc(1000 / 60, refresh, 0);
 }
 
 void setCameraProjection() {
@@ -169,6 +182,11 @@ void renderScene(void) {
 
 	GLint loc;
 
+	//Calculate delta time between frames
+	float currentTime = glutGet(GLUT_ELAPSED_TIME);
+	deltaTime = currentTime - previousTime;
+	previousTime = currentTime;
+
 	FrameCount++;
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 	// load identity matrices
@@ -177,7 +195,31 @@ void renderScene(void) {
 	// set the camera using a function similar to gluLookAt
 	lookAt(camX, camY, camZ, 0,0,0, 0,1,0);
 	// use our shader
-	glUseProgram(shader.getProgramIndex());
+	glUseProgram(shaderT.getProgramIndex());
+
+	//Associar os Texture Units aos Objects Texture
+	//stone.tga loaded in TU0; checker.tga loaded in TU1;  lightwood.tga loaded in TU2
+
+	glActiveTexture(GL_TEXTURE0);
+	glBindTexture(GL_TEXTURE_2D, TextureArray[0]);
+
+	glActiveTexture(GL_TEXTURE1);
+	glBindTexture(GL_TEXTURE_2D, TextureArray[1]);
+
+	glActiveTexture(GL_TEXTURE2);
+	glBindTexture(GL_TEXTURE_2D, TextureArray[2]);
+	
+	glActiveTexture(GL_TEXTURE3);
+	glBindTexture(GL_TEXTURE_2D, TextureArray[3]);
+
+	
+
+	//Indicar aos tres samplers do GLSL quais os Texture Units a serem usados
+	glUniform1i(tex_loc, 0);
+	glUniform1i(tex_loc1, 1);
+	glUniform1i(tex_loc2, 2);
+	glUniform1i(tex_loc3, 3);
+
 
 		//send the light position in eye coordinates
 		//glUniform4fv(lPos_uniformId, 1, lightPos); //efeito capacete do mineiro, ou seja lighPos foi definido em eye coord 
@@ -190,13 +232,13 @@ void renderScene(void) {
 
 	for (int i = 0; i < myMeshes.size(); ++i) {
 		// send the material
-		loc = glGetUniformLocation(shader.getProgramIndex(), "mat.ambient");
+		loc = glGetUniformLocation(shaderT.getProgramIndex(), "mat.ambient");
 		glUniform4fv(loc, 1, myMeshes[objId].mat.ambient);
-		loc = glGetUniformLocation(shader.getProgramIndex(), "mat.diffuse");
+		loc = glGetUniformLocation(shaderT.getProgramIndex(), "mat.diffuse");
 		glUniform4fv(loc, 1, myMeshes[objId].mat.diffuse);
-		loc = glGetUniformLocation(shader.getProgramIndex(), "mat.specular");
+		loc = glGetUniformLocation(shaderT.getProgramIndex(), "mat.specular");
 		glUniform4fv(loc, 1, myMeshes[objId].mat.specular);
-		loc = glGetUniformLocation(shader.getProgramIndex(), "mat.shininess");
+		loc = glGetUniformLocation(shaderT.getProgramIndex(), "mat.shininess");
 		glUniform1f(loc, myMeshes[objId].mat.shininess);
 		pushMatrix(MODEL);
 		translate(MODEL, xPositions[i], yPositions[i], zPositions[i]);
@@ -211,6 +253,8 @@ void renderScene(void) {
 		glUniformMatrix3fv(normal_uniformId, 1, GL_FALSE, mNormal3x3);
 
 		// Render mesh
+		glUniform1i(texMode_uniformId, myMeshes[objId].mat.texCount);
+
 		glBindVertexArray(myMeshes[objId].vao);
 			
 		if (!shader.isProgramValid()) {
@@ -247,7 +291,7 @@ void renderScene(void) {
 	popMatrix(MODEL);
 	glEnable(GL_DEPTH_TEST);
 	glDisable(GL_BLEND);
-
+	glBindTexture(GL_TEXTURE_2D, 0);
 	glutSwapBuffers();
 }
 
@@ -386,7 +430,7 @@ GLuint setupShaders() {
 	shader.loadShader(VSShaderLib::FRAGMENT_SHADER, "shaders/pointlight.frag");
 
 	// set semantics for the shader variables
-	glBindFragDataLocation(shader.getProgramIndex(), 0,"colorOut");
+	glBindFragDataLocation(shader.getProgramIndex(), 0, "colorOut");
 	glBindAttribLocation(shader.getProgramIndex(), VERTEX_COORD_ATTRIB, "position");
 	glBindAttribLocation(shader.getProgramIndex(), NORMAL_ATTRIB, "normal");
 	//glBindAttribLocation(shader.getProgramIndex(), TEXTURE_COORD_ATTRIB, "texCoord");
@@ -400,7 +444,8 @@ GLuint setupShaders() {
 	tex_loc = glGetUniformLocation(shader.getProgramIndex(), "texmap");
 	tex_loc1 = glGetUniformLocation(shader.getProgramIndex(), "texmap1");
 	tex_loc2 = glGetUniformLocation(shader.getProgramIndex(), "texmap2");
-	
+	tex_loc3 = glGetUniformLocation(shader.getProgramIndex(), "texmap3");
+
 	std::printf("InfoLog for Per Fragment Phong Lightning Shader\n%s\n\n", shader.getAllInfoLogs().c_str());
 
 	// Shader for bitmap Text
@@ -410,8 +455,33 @@ GLuint setupShaders() {
 
 	glLinkProgram(shaderText.getProgramIndex());
 	std::printf("InfoLog for Text Rendering Shader\n%s\n\n", shaderText.getAllInfoLogs().c_str());
-	
-	return(shader.isProgramLinked() && shaderText.isProgramLinked());
+
+	// Shader for table
+	shaderT.init();
+	shaderT.loadShader(VSShaderLib::VERTEX_SHADER, "shaders/texture_demo.vert");
+	shaderT.loadShader(VSShaderLib::FRAGMENT_SHADER, "shaders/texture_demo.frag");
+
+	// set semantics for the shader variables
+	glBindFragDataLocation(shaderT.getProgramIndex(), 0, "colorOut");
+	glBindAttribLocation(shaderT.getProgramIndex(), VERTEX_COORD_ATTRIB, "position");
+	glBindAttribLocation(shaderT.getProgramIndex(), NORMAL_ATTRIB, "normal");
+	glBindAttribLocation(shaderT.getProgramIndex(), TEXTURE_COORD_ATTRIB, "texCoord");
+
+	glLinkProgram(shaderT.getProgramIndex());
+
+	texMode_uniformId = glGetUniformLocation(shaderT.getProgramIndex(), "texMode"); // different modes of texturing
+	pvm_uniformId = glGetUniformLocation(shaderT.getProgramIndex(), "m_pvm");
+	vm_uniformId = glGetUniformLocation(shaderT.getProgramIndex(), "m_viewModel");
+	normal_uniformId = glGetUniformLocation(shaderT.getProgramIndex(), "m_normal");
+	lPos_uniformId = glGetUniformLocation(shaderT.getProgramIndex(), "l_pos");
+	tex_loc = glGetUniformLocation(shaderT.getProgramIndex(), "texmap");
+	tex_loc1 = glGetUniformLocation(shaderT.getProgramIndex(), "texmap1");
+	tex_loc2 = glGetUniformLocation(shaderT.getProgramIndex(), "texmap2");
+	tex_loc3 = glGetUniformLocation(shader.getProgramIndex(), "texmap3");
+
+	printf("InfoLog for Shader\n%s\n\n", shaderT.getAllInfoLogs().c_str());
+
+	return(shader.isProgramLinked() && shaderText.isProgramLinked() && shaderT.isProgramLinked());
 }
 
 // ------------------------------------------------------------
@@ -427,7 +497,7 @@ void createTable() {
 	float spec[] = { 0.8f, 0.8f, 0.8f, 1.0f };
 	float emissive[] = { 0.0f, 0.0f, 0.0f, 1.0f };
 	float shininess = 100.0f;
-	int texcount = 0;
+	int texcount = 2;
 
 	amesh = createCube();
 	memcpy(amesh.mat.ambient, amb, 4 * sizeof(float));
@@ -697,7 +767,7 @@ void createOrange() {
 	float spec[] = { 0.2f, 0.2f, 0.2f, 1.0f };
 	float emissive[] = { 0.0f, 0.0f, 0.0f, 1.0f };
 	float shininess = 80.0f;
-	int texcount = 0;
+	int texcount = 3;
 
 	amesh = createSphere(2, 12);
 	memcpy(amesh.mat.ambient, amb, 4 * sizeof(float));
@@ -772,11 +842,28 @@ void createScene() {
 	myMeshes.push_back(amesh);
 	*/
 
+	//Texture Object definition
+
+	glGenTextures(4, TextureArray);
+	Texture2D_Loader(TextureArray, "orangeTex.png", 0);
+	Texture2D_Loader(TextureArray, "checker.png", 1);
+	Texture2D_Loader(TextureArray, "lightwood.tga", 2);
+	Texture2D_Loader(TextureArray, "stone.tga", 3);
+
 	createTable();
+	createCar();
 	createRoad();
 	createButter();
 	createOrange();
-	createCar();
+}
+
+
+void updateCar() {
+	speed = fminf(speed + (uniformAccel * deltaTime), 0);
+	speed = fmaxf(speed, maxSpeed);
+
+	//update directions
+
 }
 
 void init()

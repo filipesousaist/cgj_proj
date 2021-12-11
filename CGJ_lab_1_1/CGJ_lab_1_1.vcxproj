@@ -182,6 +182,15 @@
     <None Include="shaders\pointlight.vert" />
     <None Include="shaders\text.frag" />
     <None Include="shaders\text.vert" />
+    <None Include="shaders\texture_demo.frag" />
+    <None Include="shaders\texture_demo.vert" />
+  </ItemGroup>
+  <ItemGroup>
+    <Image Include="checker.png" />
+    <Image Include="lightwood.tga" />
+    <Image Include="orangeTex.png" />
+    <Image Include="stone.tga" />
+    <Image Include="tablecloth.png" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
