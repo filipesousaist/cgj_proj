@@ -195,7 +195,7 @@ void renderScene(void) {
 	// set the camera using a function similar to gluLookAt
 	lookAt(camX, camY, camZ, 0,0,0, 0,1,0);
 	// use our shader
-	glUseProgram(shaderT.getProgramIndex());
+	glUseProgram(shader.getProgramIndex());
 
 	//Associar os Texture Units aos Objects Texture
 	//stone.tga loaded in TU0; checker.tga loaded in TU1;  lightwood.tga loaded in TU2
@@ -232,13 +232,13 @@ void renderScene(void) {
 
 	for (int i = 0; i < myMeshes.size(); ++i) {
 		// send the material
-		loc = glGetUniformLocation(shaderT.getProgramIndex(), "mat.ambient");
+		loc = glGetUniformLocation(shader.getProgramIndex(), "mat.ambient");
 		glUniform4fv(loc, 1, myMeshes[objId].mat.ambient);
-		loc = glGetUniformLocation(shaderT.getProgramIndex(), "mat.diffuse");
+		loc = glGetUniformLocation(shader.getProgramIndex(), "mat.diffuse");
 		glUniform4fv(loc, 1, myMeshes[objId].mat.diffuse);
-		loc = glGetUniformLocation(shaderT.getProgramIndex(), "mat.specular");
+		loc = glGetUniformLocation(shader.getProgramIndex(), "mat.specular");
 		glUniform4fv(loc, 1, myMeshes[objId].mat.specular);
-		loc = glGetUniformLocation(shaderT.getProgramIndex(), "mat.shininess");
+		loc = glGetUniformLocation(shader.getProgramIndex(), "mat.shininess");
 		glUniform1f(loc, myMeshes[objId].mat.shininess);
 		pushMatrix(MODEL);
 		translate(MODEL, xPositions[i], yPositions[i], zPositions[i]);
@@ -437,6 +437,7 @@ GLuint setupShaders() {
 
 	glLinkProgram(shader.getProgramIndex());
 
+	texMode_uniformId = glGetUniformLocation(shader.getProgramIndex(), "texMode"); // different modes of texturing
 	pvm_uniformId = glGetUniformLocation(shader.getProgramIndex(), "m_pvm");
 	vm_uniformId = glGetUniformLocation(shader.getProgramIndex(), "m_viewModel");
 	normal_uniformId = glGetUniformLocation(shader.getProgramIndex(), "m_normal");
@@ -456,32 +457,7 @@ GLuint setupShaders() {
 	glLinkProgram(shaderText.getProgramIndex());
 	std::printf("InfoLog for Text Rendering Shader\n%s\n\n", shaderText.getAllInfoLogs().c_str());
 
-	// Shader for table
-	shaderT.init();
-	shaderT.loadShader(VSShaderLib::VERTEX_SHADER, "shaders/texture_demo.vert");
-	shaderT.loadShader(VSShaderLib::FRAGMENT_SHADER, "shaders/texture_demo.frag");
-
-	// set semantics for the shader variables
-	glBindFragDataLocation(shaderT.getProgramIndex(), 0, "colorOut");
-	glBindAttribLocation(shaderT.getProgramIndex(), VERTEX_COORD_ATTRIB, "position");
-	glBindAttribLocation(shaderT.getProgramIndex(), NORMAL_ATTRIB, "normal");
-	glBindAttribLocation(shaderT.getProgramIndex(), TEXTURE_COORD_ATTRIB, "texCoord");
-
-	glLinkProgram(shaderT.getProgramIndex());
-
-	texMode_uniformId = glGetUniformLocation(shaderT.getProgramIndex(), "texMode"); // different modes of texturing
-	pvm_uniformId = glGetUniformLocation(shaderT.getProgramIndex(), "m_pvm");
-	vm_uniformId = glGetUniformLocation(shaderT.getProgramIndex(), "m_viewModel");
-	normal_uniformId = glGetUniformLocation(shaderT.getProgramIndex(), "m_normal");
-	lPos_uniformId = glGetUniformLocation(shaderT.getProgramIndex(), "l_pos");
-	tex_loc = glGetUniformLocation(shaderT.getProgramIndex(), "texmap");
-	tex_loc1 = glGetUniformLocation(shaderT.getProgramIndex(), "texmap1");
-	tex_loc2 = glGetUniformLocation(shaderT.getProgramIndex(), "texmap2");
-	tex_loc3 = glGetUniformLocation(shader.getProgramIndex(), "texmap3");
-
-	printf("InfoLog for Shader\n%s\n\n", shaderT.getAllInfoLogs().c_str());
-
-	return(shader.isProgramLinked() && shaderText.isProgramLinked() && shaderT.isProgramLinked());
+	return(shader.isProgramLinked() && shaderText.isProgramLinked());
 }
 
 // ------------------------------------------------------------
@@ -845,10 +821,10 @@ void createScene() {
 	//Texture Object definition
 
 	glGenTextures(4, TextureArray);
-	Texture2D_Loader(TextureArray, "orangeTex.png", 0);
+	Texture2D_Loader(TextureArray, "stone.tga", 0);
 	Texture2D_Loader(TextureArray, "checker.png", 1);
 	Texture2D_Loader(TextureArray, "lightwood.tga", 2);
-	Texture2D_Loader(TextureArray, "stone.tga", 3);
+	Texture2D_Loader(TextureArray, "orangeTex.png", 3);
 
 	createTable();
 	createCar();
