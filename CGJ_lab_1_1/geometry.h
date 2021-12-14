@@ -1,4 +1,7 @@
 
+#pragma once
+#include <GL/glew.h>
+
 #define MAX_TEXTURES 8
 
 enum texType {DIFFUSE, SPECULAR, NORMALS, BUMP};
@@ -13,14 +16,14 @@ struct Material{
 };
 // A model can be made of many meshes. Each is stored  in the following structure
 struct MyMesh {
-		GLuint vao;
-		GLuint texUnits[MAX_TEXTURES];
-		texType texTypes[4];
-		float transform[16];
-		GLuint numIndexes;
-		unsigned int type;
-		struct Material mat;
-	};
+	GLuint vao;
+	GLuint texUnits[MAX_TEXTURES];
+	texType texTypes[4];
+	float transform[16];
+	GLuint numIndexes;
+	unsigned int type;
+	struct Material mat;
+};
 
 MyMesh createCube();
 MyMesh createQuad(float size_x, float size_y);
