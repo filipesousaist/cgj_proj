@@ -502,6 +502,7 @@ GLuint setupShaders() {
 
 	glLinkProgram(shader.getProgramIndex());
 
+	texMode_uniformId = glGetUniformLocation(shader.getProgramIndex(), "texMode"); // different modes of texturing
 	pvm_uniformId = glGetUniformLocation(shader.getProgramIndex(), "m_pvm");
 	vm_uniformId = glGetUniformLocation(shader.getProgramIndex(), "m_viewModel");
 	normal_uniformId = glGetUniformLocation(shader.getProgramIndex(), "m_normal");
@@ -509,7 +510,8 @@ GLuint setupShaders() {
 	tex_loc = glGetUniformLocation(shader.getProgramIndex(), "texmap");
 	tex_loc1 = glGetUniformLocation(shader.getProgramIndex(), "texmap1");
 	tex_loc2 = glGetUniformLocation(shader.getProgramIndex(), "texmap2");
-	
+	tex_loc3 = glGetUniformLocation(shader.getProgramIndex(), "texmap3");
+
 	std::printf("InfoLog for Per Fragment Phong Lightning Shader\n%s\n\n", shader.getAllInfoLogs().c_str());
 
 	// Shader for bitmap Text
@@ -780,6 +782,14 @@ void createScene() {
 	amesh.mat.texCount = texcount;
 	myMeshes.push_back(amesh);
 	*/
+
+	//Texture Object definition
+
+	glGenTextures(4, TextureArray);
+	Texture2D_Loader(TextureArray, "orangeTex.png", 0);
+	Texture2D_Loader(TextureArray, "checker.png", 1);
+	Texture2D_Loader(TextureArray, "lightwood.tga", 2);
+	Texture2D_Loader(TextureArray, "stone.tga", 3);
 
 	createTable();
 	createRoad();
