@@ -12,7 +12,7 @@ using namespace Utils;
 using namespace MathUtils;
 
 const float ACC = 1e-5f;
-const float ANG_SPEED = 1e-3f;
+const float ANG_SPEED = 2e-2f;
 const float MAX_SPEED = 3e-3f;
 
 Car::Car() {
@@ -96,7 +96,7 @@ void Car::moveAngle(int deltaTime) {
 		turnMult--;
 	
 	float speedFraction = speed / MAX_SPEED;
-	angSpeed = ANG_SPEED * speedFraction * turnMult * deltaTime;
+	angSpeed = ANG_SPEED * speedFraction * turnMult;//*deltaTime;
 
 	angle = modAngle(angle + angSpeed * deltaTime);
 }

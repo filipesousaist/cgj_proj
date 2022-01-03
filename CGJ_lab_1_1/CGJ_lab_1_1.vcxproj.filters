@@ -13,6 +13,9 @@
       <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
     </Filter>
+    <Filter Include="Source Files\img">
+      <UniqueIdentifier>{68bd7f68-ffa6-4482-88ca-c95d73eb2e70}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="AVTmathLib.cpp">
@@ -112,20 +115,20 @@
     </None>
   </ItemGroup>
   <ItemGroup>
-    <Image Include="stone.tga">
-      <Filter>Source Files</Filter>
-    </Image>
-    <Image Include="tablecloth.png">
-      <Filter>Source Files</Filter>
-    </Image>
     <Image Include="checker.png">
-      <Filter>Source Files</Filter>
+      <Filter>Source Files\img</Filter>
     </Image>
     <Image Include="lightwood.tga">
-      <Filter>Source Files</Filter>
+      <Filter>Source Files\img</Filter>
     </Image>
     <Image Include="orangeTex.png">
-      <Filter>Source Files</Filter>
+      <Filter>Source Files\img</Filter>
+    </Image>
+    <Image Include="stone.tga">
+      <Filter>Source Files\img</Filter>
+    </Image>
+    <Image Include="tablecloth.png">
+      <Filter>Source Files\img</Filter>
     </Image>
   </ItemGroup>
 </Project>
