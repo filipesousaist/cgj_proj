@@ -4,9 +4,6 @@
 class Car : public Object
 {
 private:
-	float x;
-	float y;
-	float z;
 	float angle;
 
 	float speed;
@@ -22,13 +19,15 @@ private:
 
 	void movePosition(int deltaTime);
 	void moveAngle(int deltaTime);
+
+	void move(int deltaTime);
+	void addParts();
+
+	void addBody();
+	void addWheels();
 	
 public:
 	Car::Car();
-	void Car::addBody();
-	void Car::addWheels();
-	void move(int deltaTime);
-	void addParts();
 
 	void accelerate(bool active);
 	void accelerateBack(bool active);
@@ -48,12 +47,12 @@ public:
 	float getAngle() {
 		return angle;
 	}
-
 	float getSpeed() {
 		return speed;
 	}
-
 	float getAngularSpeed() {
 		return angSpeed;
 	}
+
+	string getType() { return "CAR"; }
 };

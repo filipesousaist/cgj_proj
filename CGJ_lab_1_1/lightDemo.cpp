@@ -31,29 +31,31 @@
 #include "AVTmathLib.h"
 #include "VertexAttrDef.h"
 #include "geometry.h"
+#include "Texture_Loader.h"
+#include "avtFreeType.h"
 
 #include "Object.h"
 #include "Car.h"
 #include "constants.h"
-
-#include "avtFreeType.h"
+#include "Utils.h"
 
 using namespace std;
+using namespace Utils;
 
-#define CAPTION "Lab 1.1"
+constexpr char CAPTION[] = "Lab 1.1";
 int WindowHandle = 0;
 int WinX = 1024, WinY = 768;
 
 unsigned int FrameCount = 0;
 
-int lastTime = 0;
+unsigned int lastTime = 0; // Time of last frame in milliseconds
 
 //shaders
 VSShaderLib shader;  //geometry
 VSShaderLib shaderText;  //render bitmap text
 
 //File with the font
-const string font_name = "fonts/arial.ttf";
+constexpr char FONT_NAME[] = "fonts/arial.ttf";
 
 //Vector with meshes
 vector<struct MyMesh> myMeshes;
@@ -73,11 +75,7 @@ vector<float> zRotations;
 
 Car* car;
 
-const enum class CAMERA {
-	ORTHOGONAL, PERSPECTIVE, CAR
-};
-
-CAMERA cameraProjection;
+Camera cameraProjection;
 
 float camRatio;
 
@@ -94,8 +92,11 @@ GLint pvm_uniformId;
 GLint vm_uniformId;
 GLint normal_uniformId;
 GLint lPos_uniformId;
-GLint tex_loc, tex_loc1, tex_loc2;
-	
+GLint tex_loc[2];
+GLint texMode_uniformId;
+
+GLuint TextureArray[4];
+
 // Camera Position
 float camX, camY, camZ;
 
@@ -134,11 +135,11 @@ void setCameraProjection() {
 
 	switch (cameraProjection)
 	{
-	case CAMERA::ORTHOGONAL:
+	case Camera::ORTHOGONAL:
 		ortho(-50 * camRatio, 50 * camRatio, -50, 50, 1, 1500);
 		break;
-	case CAMERA::PERSPECTIVE:
-	case CAMERA::CAR:
+	case Camera::PERSPECTIVE:
+	case Camera::CAR:
 		perspective(53.13f, camRatio, 0.1f, 1000.0f);
 		break;
 	default:
@@ -164,6 +165,26 @@ void changeSize(int w, int h) {
 	setCameraProjection();
 }
 
+void updateCarCamera() {
+	float x = car->getX();
+	float y = car->getY();
+	float z = car->getZ();
+
+	float camWorld[4];
+	float camLocal[4]{ camX, camY, camZ, 1 };
+
+	pushMatrix(MODEL);
+	translate(MODEL, x, y, z);
+	rotate(MODEL, car->getAngle(), 0, 1, 0);
+	multMatrixPoint(MODEL, camLocal, camWorld);
+	lookAt(
+		camWorld[0], camWorld[1], camWorld[2],
+		x, y, z,
+		0, 1, 0
+	);
+	popMatrix(MODEL);
+}
+
 
 // ------------------------------------------------------------
 //
@@ -171,7 +192,6 @@ void changeSize(int w, int h) {
 //
 
 void renderScene(void) {
-
 	GLint loc;
 
 	FrameCount++;
@@ -181,30 +201,12 @@ void renderScene(void) {
 	loadIdentity(MODEL);
 	// set the camera using a function similar to gluLookAt
 	switch (cameraProjection) {
-	case CAMERA::ORTHOGONAL:
+	case Camera::ORTHOGONAL:
 		lookAt(0, 100, 0, 0, 0, 0, 1, 0, 0); break;
-	case CAMERA::PERSPECTIVE:
+	case Camera::PERSPECTIVE:
 		lookAt(-66, 30, -66, 0, 0, 0, 0, 1, 0); break;
-	case CAMERA::CAR:
-		float x = car->getX();
-		float y = car->getY();
-		float z = car->getZ();
-
-		float camWorld[4];
-		float camLocal[4]{ camX, camY, camZ, 1 };
-
-		pushMatrix(MODEL);
-		translate(MODEL, x, y, z);
-		rotate(MODEL, car->getAngle(), 0, 1, 0);
-		multMatrixPoint(MODEL, camLocal, camWorld);
-		lookAt(
-			camWorld[0], camWorld[1], camWorld[2],
-			x, y, z,
-			0, 1, 0
-		);
-		popMatrix(MODEL);
-
-		break;
+	case Camera::CAR:
+		updateCarCamera(); break;
 	}
 	
 	// use our shader
@@ -220,6 +222,15 @@ void renderScene(void) {
 	int objId = 0; //id of the object mesh - to be used as index of mesh: Mymeshes[objID] means the current mesh
 
 	for (int i = 0; i < myMeshes.size(); ++i) {
+		// textures
+		for (int t = 0; t < myMeshes[objId].mat.texCount; t++) {
+			glActiveTexture(GL_TEXTURES[t]);
+			glBindTexture(GL_TEXTURE_2D, TextureArray[myMeshes[objId].mat.texIndices[t]]);
+			glUniform1i(tex_loc[t], t);
+		}
+		loc = glGetUniformLocation(shader.getProgramIndex(), "mergeTextureWithColor");
+		glUniform1i(loc, myMeshes[objId].mat.mergeTextureWithColor);
+
 		// send the material
 		loc = glGetUniformLocation(shader.getProgramIndex(), "mat.ambient");
 		glUniform4fv(loc, 1, myMeshes[objId].mat.ambient);
@@ -229,6 +240,8 @@ void renderScene(void) {
 		glUniform4fv(loc, 1, myMeshes[objId].mat.specular);
 		loc = glGetUniformLocation(shader.getProgramIndex(), "mat.shininess");
 		glUniform1f(loc, myMeshes[objId].mat.shininess);
+		loc = glGetUniformLocation(shader.getProgramIndex(), "mat.texCount");
+		glUniform1i(loc, myMeshes[objId].mat.texCount);
 		pushMatrix(MODEL);
 		translate(MODEL, xPositions[i], yPositions[i], zPositions[i]);
 		rotate(MODEL, angles[i], xRotations[i], yRotations[i], zRotations[i]);
@@ -261,6 +274,15 @@ void renderScene(void) {
 	vector<Object::Part>* parts = car->update(deltaTime);
 
 	for (const Object::Part& part : *parts) {
+		// textures
+		for (int t = 0; t < part.mesh.mat.texCount; t++) {
+			glActiveTexture(GL_TEXTURES[t]);
+			glBindTexture(GL_TEXTURE_2D, TextureArray[part.mesh.mat.texIndices[t]]);
+			glUniform1i(tex_loc[t], t);
+		}
+		loc = glGetUniformLocation(shader.getProgramIndex(), "mergeTextureWithColor");
+		glUniform1i(loc, part.mesh.mat.mergeTextureWithColor);
+
 		// send the material
 		loc = glGetUniformLocation(shader.getProgramIndex(), "mat.ambient");
 		glUniform4fv(loc, 1, part.mesh.mat.ambient);
@@ -270,6 +292,8 @@ void renderScene(void) {
 		glUniform4fv(loc, 1, part.mesh.mat.specular);
 		loc = glGetUniformLocation(shader.getProgramIndex(), "mat.shininess");
 		glUniform1f(loc, part.mesh.mat.shininess);
+		loc = glGetUniformLocation(shader.getProgramIndex(), "mat.texCount");
+		glUniform1i(loc, part.mesh.mat.texCount);
 		pushMatrix(MODEL);
 		
 		translate(MODEL, car->getX(), car->getY(), car->getZ());
@@ -277,7 +301,6 @@ void renderScene(void) {
 		translate(MODEL, part.position[0], part.position[1], part.position[2]);
 		rotate(MODEL, part.angle, part.rotationAxis[0], part.rotationAxis[1], part.rotationAxis[2]);
 		scale(MODEL, part.scale[0], part.scale[1], part.scale[2]);
-		
 
 		// send matrices to OGL
 		computeDerivedMatrix(PROJ_VIEW_MODEL);
@@ -352,11 +375,11 @@ void processKeys(unsigned char key, int xx, int yy)
 	case 'n': glDisable(GL_MULTISAMPLE); break;
 
 	case '1':
-		cameraProjection = CAMERA::ORTHOGONAL; setCameraProjection(); break;
+		cameraProjection = Camera::ORTHOGONAL; setCameraProjection(); break;
 	case '2':
-		cameraProjection = CAMERA::PERSPECTIVE; setCameraProjection(); break;
+		cameraProjection = Camera::PERSPECTIVE; setCameraProjection(); break;
 	case '3':
-		cameraProjection = CAMERA::CAR; setCameraProjection(); break;
+		cameraProjection = Camera::CAR; setCameraProjection(); break;
 
 	case 'w':
 		car->accelerate(true); break;
@@ -383,8 +406,6 @@ void processKeysUp(unsigned char key, int xx, int yy)
 	}
 }
 
-
-
 // ------------------------------------------------------------
 //
 // Mouse Events
@@ -392,7 +413,7 @@ void processKeysUp(unsigned char key, int xx, int yy)
 
 void processMouseButtons(int button, int state, int xx, int yy)
 {
-	if (cameraProjection == CAMERA::CAR) {
+	if (cameraProjection == Camera::CAR) {
 		// start tracking the mouse
 		if (state == GLUT_DOWN) {
 			startX = xx;
@@ -423,7 +444,7 @@ void processMouseButtons(int button, int state, int xx, int yy)
 
 void processMouseMotion(int xx, int yy)
 {
-	if (cameraProjection == CAMERA::CAR) {
+	if (cameraProjection == Camera::CAR) {
 		int deltaX, deltaY;
 		float alphaAux, betaAux;
 		float rAux;
@@ -467,7 +488,7 @@ void processMouseMotion(int xx, int yy)
 
 
 void mouseWheel(int wheel, int direction, int x, int y) {
-	if (cameraProjection == CAMERA::CAR) {
+	if (cameraProjection == Camera::CAR) {
 		r += direction * 0.1f;
 		if (r < 0.1f)
 			r = 0.1f;
@@ -486,7 +507,6 @@ void mouseWheel(int wheel, int direction, int x, int y) {
 // Shader Stuff
 //
 
-
 GLuint setupShaders() {
 
 	// Shader for models
@@ -495,7 +515,7 @@ GLuint setupShaders() {
 	shader.loadShader(VSShaderLib::FRAGMENT_SHADER, "shaders/pointlight.frag");
 
 	// set semantics for the shader variables
-	glBindFragDataLocation(shader.getProgramIndex(), 0,"colorOut");
+	glBindFragDataLocation(shader.getProgramIndex(), 0, "colorOut");
 	glBindAttribLocation(shader.getProgramIndex(), VERTEX_COORD_ATTRIB, "position");
 	glBindAttribLocation(shader.getProgramIndex(), NORMAL_ATTRIB, "normal");
 	//glBindAttribLocation(shader.getProgramIndex(), TEXTURE_COORD_ATTRIB, "texCoord");
@@ -507,10 +527,8 @@ GLuint setupShaders() {
 	vm_uniformId = glGetUniformLocation(shader.getProgramIndex(), "m_viewModel");
 	normal_uniformId = glGetUniformLocation(shader.getProgramIndex(), "m_normal");
 	lPos_uniformId = glGetUniformLocation(shader.getProgramIndex(), "l_pos");
-	tex_loc = glGetUniformLocation(shader.getProgramIndex(), "texmap");
-	tex_loc1 = glGetUniformLocation(shader.getProgramIndex(), "texmap1");
-	tex_loc2 = glGetUniformLocation(shader.getProgramIndex(), "texmap2");
-	tex_loc3 = glGetUniformLocation(shader.getProgramIndex(), "texmap3");
+	tex_loc[0] = glGetUniformLocation(shader.getProgramIndex(), "texmap");
+	tex_loc[1] = glGetUniformLocation(shader.getProgramIndex(), "texmap1");
 
 	std::printf("InfoLog for Per Fragment Phong Lightning Shader\n%s\n\n", shader.getAllInfoLogs().c_str());
 
@@ -522,7 +540,7 @@ GLuint setupShaders() {
 	glLinkProgram(shaderText.getProgramIndex());
 	std::printf("InfoLog for Text Rendering Shader\n%s\n\n", shaderText.getAllInfoLogs().c_str());
 	
-	return(shader.isProgramLinked() && shaderText.isProgramLinked());
+	return shader.isProgramLinked() && shaderText.isProgramLinked();
 }
 
 // ------------------------------------------------------------
@@ -531,22 +549,17 @@ GLuint setupShaders() {
 //
 
 void createTable() {
-	MyMesh amesh;
-
-	float amb[] = { 0.2f, 0.15f, 0.1f, 1.0f };
+float amb[] = { 0.2f, 0.15f, 0.1f, 1.0f };
 	float diff[] = { 0.8f, 0.6f, 0.4f, 1.0f };
 	float spec[] = { 0.8f, 0.8f, 0.8f, 1.0f };
 	float emissive[] = { 0.0f, 0.0f, 0.0f, 1.0f };
 	float shininess = 100.0f;
-	int texcount = 0;
+	int texIndices[] = { WOOD_TEX, CHECKERS_TEX };
+	bool mergeTextureWithColor = false;
 
-	amesh = createCube();
-	memcpy(amesh.mat.ambient, amb, 4 * sizeof(float));
-	memcpy(amesh.mat.diffuse, diff, 4 * sizeof(float));
-	memcpy(amesh.mat.specular, spec, 4 * sizeof(float));
-	memcpy(amesh.mat.emissive, emissive, 4 * sizeof(float));
-	amesh.mat.shininess = shininess;
-	amesh.mat.texCount = texcount;
+	MyMesh amesh = createCube();
+	setMeshProperties(&amesh, amb, diff, spec, emissive, shininess, texIndices, mergeTextureWithColor);
+
 	myMeshes.push_back(amesh);
 
 	xScales.push_back(100.0f);
@@ -564,22 +577,16 @@ void createTable() {
 }
 
 void createLimits() {
-	MyMesh amesh;
-
 	float amb[] = { 0.15f, 0.15f, 0.15f, 1.0f };
 	float diff[] = { 0.8f, 0.8f, 0.8f, 1.0f };
 	float spec[] = { 0.8f, 0.8f, 0.8f, 1.0f };
 	float emissive[] = { 0.0f, 0.0f, 0.0f, 1.0f };
 	float shininess = 300.0f;
-	int texcount = 0;
+	int* texIndices = NULL;
+	int mergeTextureWithColor = false;
 
-	amesh = createCube();
-	memcpy(amesh.mat.ambient, amb, 4 * sizeof(float));
-	memcpy(amesh.mat.diffuse, diff, 4 * sizeof(float));
-	memcpy(amesh.mat.specular, spec, 4 * sizeof(float));
-	memcpy(amesh.mat.emissive, emissive, 4 * sizeof(float));
-	amesh.mat.shininess = shininess;
-	amesh.mat.texCount = texcount;
+	MyMesh amesh = createCube();
+	setMeshProperties(&amesh, amb, diff, spec, emissive, shininess, texIndices, mergeTextureWithColor);
 	
 	float signs[]{ -1, 1 };
 
@@ -604,22 +611,16 @@ void createLimits() {
 }
 
 void createCheerios() {
-	MyMesh amesh;
-
 	float amb[] = { 0.6f, 0.48f, 0.0f, 1.0f };
 	float diff[] = { 0.8f, 0.8f, 0.2f, 1.0f };
 	float spec[] = { 0.2f, 0.2f, 0.2f, 1.0f };
 	float emissive[] = { 0.0f, 0.0f, 0.0f, 1.0f };
 	float shininess = 80.0f;
-	int texcount = 0;
+	int* texIndices = NULL;
+	bool mergeTextureWithColor = false;
 
-	amesh = createTorus(0.2f, 0.4f, 12, 12);
-	memcpy(amesh.mat.ambient, amb, 4 * sizeof(float));
-	memcpy(amesh.mat.diffuse, diff, 4 * sizeof(float));
-	memcpy(amesh.mat.specular, spec, 4 * sizeof(float));
-	memcpy(amesh.mat.emissive, emissive, 4 * sizeof(float));
-	amesh.mat.shininess = shininess;
-	amesh.mat.texCount = texcount;
+	MyMesh amesh = createTorus(0.2f, 0.4f, 12, 12);
+	setMeshProperties(&amesh, amb, diff, spec, emissive, shininess, texIndices, mergeTextureWithColor);
 	
 	float signs[]{ -1, 1 };
 
@@ -658,23 +659,19 @@ void createButter() {
 	float spec[] = { 0.2f, 0.2f, 0.2f, 1.0f };
 	float emissive[] = { 0.0f, 0.0f, 0.0f, 1.0f };
 	float shininess = 80.0f;
-	int texcount = 0;
+	int* texIndices = NULL;
+	bool mergeTextureWithColor = false;
 
 	amesh = createCube();
-	memcpy(amesh.mat.ambient, amb, 4 * sizeof(float));
-	memcpy(amesh.mat.diffuse, diff, 4 * sizeof(float));
-	memcpy(amesh.mat.specular, spec, 4 * sizeof(float));
-	memcpy(amesh.mat.emissive, emissive, 4 * sizeof(float));
-	amesh.mat.shininess = shininess;
-	amesh.mat.texCount = texcount;
+	setMeshProperties(&amesh, amb, diff, spec, emissive, shininess, texIndices, mergeTextureWithColor);
 
-	float positions[]{
+	float positions[] {
 		14, 1,
 		19, -0.75f,
 		28, 1
 	};
 
-	float rotations[]{
+	float rotations[] {
 		0,
 		45,
 		90
@@ -701,24 +698,18 @@ void createButter() {
 }
 
 void createOrange() {
-	MyMesh amesh;
-
 	float amb[] = { 0.8f, 0.4f, 0.0f, 1.0f };
 	float diff[] = { 0.6f, 0.6f, 0.2f, 1.0f };
 	float spec[] = { 0.2f, 0.2f, 0.2f, 1.0f };
 	float emissive[] = { 0.0f, 0.0f, 0.0f, 1.0f };
 	float shininess = 80.0f;
-	int texcount = 0;
+	int texIndices[2] = { ORANGE_TEX, NO_TEX };
+	bool mergeTextureWithColor = false;
 
-	amesh = createSphere(2, 12);
-	memcpy(amesh.mat.ambient, amb, 4 * sizeof(float));
-	memcpy(amesh.mat.diffuse, diff, 4 * sizeof(float));
-	memcpy(amesh.mat.specular, spec, 4 * sizeof(float));
-	memcpy(amesh.mat.emissive, emissive, 4 * sizeof(float));
-	amesh.mat.shininess = shininess;
-	amesh.mat.texCount = texcount;
+	MyMesh amesh = createSphere(2, 12);
+	setMeshProperties(&amesh, amb, diff, spec, emissive, shininess, texIndices, mergeTextureWithColor);
 
-	float positions[]{
+	float positions[] {
 		14, 5,
 		19, -4,
 		28, 5
@@ -745,51 +736,13 @@ void createOrange() {
 }
 
 void createScene() {
-	/*
-
-	// create geometry and VAO of the sphere
-	amesh = createSphere(1.0f, 20);
-	memcpy(amesh.mat.ambient, amb, 4 * sizeof(float));
-	memcpy(amesh.mat.diffuse, diff, 4 * sizeof(float));
-	memcpy(amesh.mat.specular, spec, 4 * sizeof(float));
-	memcpy(amesh.mat.emissive, emissive, 4 * sizeof(float));
-	amesh.mat.shininess = shininess;
-	amesh.mat.texCount = texcount;
-	myMeshes.push_back(amesh);
-
-	float amb1[]= {0.3f, 0.0f, 0.0f, 1.0f};
-	float diff1[] = {0.8f, 0.1f, 0.1f, 1.0f};
-	float spec1[] = {0.9f, 0.9f, 0.9f, 1.0f};
-	shininess=500.0;
-
-	// create geometry and VAO of the cylinder
-	amesh = createCylinder(1.5f, 0.5f, 20);
-	memcpy(amesh.mat.ambient, amb1, 4 * sizeof(float));
-	memcpy(amesh.mat.diffuse, diff1, 4 * sizeof(float));
-	memcpy(amesh.mat.specular, spec1, 4 * sizeof(float));
-	memcpy(amesh.mat.emissive, emissive, 4 * sizeof(float));
-	amesh.mat.shininess = shininess;
-	amesh.mat.texCount = texcount;
-	myMeshes.push_back(amesh);
-
-	// create geometry and VAO of the cube
-	amesh = createCube();
-	memcpy(amesh.mat.ambient, amb, 4 * sizeof(float));
-	memcpy(amesh.mat.diffuse, diff, 4 * sizeof(float));
-	memcpy(amesh.mat.specular, spec, 4 * sizeof(float));
-	memcpy(amesh.mat.emissive, emissive, 4 * sizeof(float));
-	amesh.mat.shininess = shininess;
-	amesh.mat.texCount = texcount;
-	myMeshes.push_back(amesh);
-	*/
-
 	//Texture Object definition
 
 	glGenTextures(4, TextureArray);
-	Texture2D_Loader(TextureArray, "orangeTex.png", 0);
-	Texture2D_Loader(TextureArray, "checker.png", 1);
-	Texture2D_Loader(TextureArray, "lightwood.tga", 2);
-	Texture2D_Loader(TextureArray, "stone.tga", 3);
+	Texture2D_Loader(TextureArray, "stone.tga", STONE_TEX);
+	Texture2D_Loader(TextureArray, "lightwood.tga", WOOD_TEX);
+	Texture2D_Loader(TextureArray, "checker.png", CHECKERS_TEX);
+	Texture2D_Loader(TextureArray, "orangeTex.png", ORANGE_TEX);
 
 	createTable();
 	createRoad();
@@ -810,14 +763,14 @@ void init()
 	ilInit();
 
 	/// Initialization of freetype library with font_name file
-	freeType_init(font_name);
+	freeType_init(FONT_NAME);
 
 	// set the camera position based on its spherical coordinates
 	camX = r * sin(alpha * DEG_TO_RAD) * cos(beta * DEG_TO_RAD);
 	camZ = r * cos(alpha * DEG_TO_RAD) * cos(beta * DEG_TO_RAD);
-	camY = r *   						     sin(beta * DEG_TO_RAD);
+	camY = r *   						 sin(beta * DEG_TO_RAD);
 
-	cameraProjection = CAMERA::ORTHOGONAL;
+	cameraProjection = Camera::ORTHOGONAL;
 
 	createScene();
 	

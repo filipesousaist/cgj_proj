@@ -13,6 +13,8 @@ struct Material{
 	float emissive[4];
 	float shininess;
 	int texCount;
+	int texIndices[2];
+	bool mergeTextureWithColor;
 };
 // A model can be made of many meshes. Each is stored  in the following structure
 struct MyMesh {

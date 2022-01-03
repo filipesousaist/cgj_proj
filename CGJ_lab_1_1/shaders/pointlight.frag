@@ -2,12 +2,8 @@
 
 uniform sampler2D texmap;
 uniform sampler2D texmap1;
-uniform sampler2D texmap2;
-uniform sampler2D texmap3;
 
-uniform int texMode;
-
-out vec4 colorOut;
+uniform bool mergeTextureWithColor;
 
 struct Materials {
 	vec4 diffuse;
@@ -26,6 +22,8 @@ in Data {
 	vec3 lightDir;
 	vec2 tex_coord;
 } DataIn;
+
+out vec4 colorOut;
 
 void main() {
 
@@ -50,25 +48,22 @@ void main() {
 		spec = mat.specular * pow(intSpec, mat.shininess);
 	}
 	
-	if(texMode == 0) // modulate diffuse color with texel color
+	if (mat.texCount == 0)
 	{
-		texel = texture(texmap2, DataIn.tex_coord);  // texel from lighwood.tga
-		colorOut = max(intensity * mat.diffuse * texel + spec,0.07 * texel);
+		colorOut = max(intensity * mat.diffuse + spec, mat.ambient);
 	}
-	else if (texMode == 1) // diffuse color is replaced by texel color, with specular area or ambient (0.1*texel)
+	else if (mat.texCount == 1) // diffuse color is replaced by texel color, with specular area or ambient (0.1*texel)
 	{
-		texel = texture(texmap, DataIn.tex_coord);  // texel from stone.tga
-		colorOut = max(intensity*texel + spec, 0.07*texel);
-	}
-	else if (texMode == 3) // diffuse color is replaced by texel color, with specular area or ambient (0.1*texel)
-	{
-		texel = texture(texmap3, DataIn.tex_coord);  // texel from stone.tga
-		colorOut = max(intensity*texel + spec, 0.07*texel);
+		texel = texture(texmap, DataIn.tex_coord);
+		if (mergeTextureWithColor) // mix 
+			colorOut = max(intensity * mat.diffuse * texel + spec,0.07 * texel);
+		else
+			colorOut = max(intensity*texel + spec, 0.07*texel);
 	}
 	else // multitexturing
 	{
-		texel = texture(texmap2, DataIn.tex_coord);  // texel from lighwood.tga
-		texel1 = texture(texmap1, DataIn.tex_coord);  // texel from checker.tga
+		texel = texture(texmap, DataIn.tex_coord);
+		texel1 = texture(texmap1, DataIn.tex_coord);
 		colorOut = max(intensity*texel*texel1 + spec, 0.07*texel*texel1);
 	}
 }

@@ -4,3 +4,16 @@
 
 const float PI = 4 * atan(1);
 const float DEG_TO_RAD = PI / 180;
+
+const enum class Camera {
+	ORTHOGONAL, PERSPECTIVE, CAR
+};
+
+const int
+	NO_TEX = -1,
+	STONE_TEX = 0,
+	WOOD_TEX = 1,
+	CHECKERS_TEX = 2,
+	ORANGE_TEX = 3;
+
+const int GL_TEXTURES[] = { GL_TEXTURE0, GL_TEXTURE1 };

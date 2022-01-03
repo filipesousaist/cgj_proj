@@ -2,6 +2,7 @@
 
 #include "geometry.h"
 #include <vector>
+#include <string>
 
 using namespace std;
 
@@ -17,15 +18,14 @@ public:
 		float angle;
 		float rotationAxis[3];
 	};
-
-	static void setMeshProperties(MyMesh* mesh,
-		float amb[3], float diff[3], float spec[3],
-		float emissive[3], float shininess, int texCount);
-	virtual void addParts() = 0;
-	virtual void move(int deltaTime) {};
+	
 	vector<Part>* update(int deltaTime);
 
 protected:
+	float x;
+	float y;
+	float z;
+
 	void addPart(MyMesh mesh, float x, float y, float z, 
 		float sX, float sY, float sZ, 
 		float angle, float rX, float rY, float rZ);
@@ -33,6 +33,10 @@ protected:
 		float sX, float sY, float sZ);
 	void addPart(MyMesh mesh, float x, float y, float z);
 	void addPart(MyMesh mesh);
+
+	virtual void addParts() = 0;
+	virtual void move(int deltaTime) {};
+	virtual string getType() = 0;
 
 private:
 	vector<Part>* parts;
