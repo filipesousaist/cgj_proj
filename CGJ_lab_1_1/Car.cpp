@@ -17,6 +17,7 @@ const float MAX_SPEED = 3e-3f;
 
 Car::Car() {
 	angle = 0;
+	rollAngle = 0;
 
 	speed = 0;
 	angSpeed = 0;

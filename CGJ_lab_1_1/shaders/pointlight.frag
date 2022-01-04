@@ -23,12 +23,14 @@ in Data {
 	vec2 tex_coord;
 } DataIn;
 
+in vec4 pos;
+
 out vec4 colorOut;
 
 void main() {
 
 	vec4 texel, texel1; 
-
+	
 	vec4 spec = vec4(0.0);
 
 	vec3 n = normalize(DataIn.normal);
@@ -66,4 +68,10 @@ void main() {
 		texel1 = texture(texmap1, DataIn.tex_coord);
 		colorOut = max(intensity*texel*texel1 + spec, 0.07*texel*texel1);
 	}
+
+	float dist = length(pos.xyz);
+	float fogAmount = exp(-dist*0.0/*2*/ );
+	vec3 fogColor = vec3(0.5, 0.6, 0.7);
+	vec3 final_color = mix(fogColor, colorOut.rgb, fogAmount);
+	colorOut = vec4(final_color, colorOut.a);
 }

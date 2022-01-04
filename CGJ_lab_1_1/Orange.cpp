@@ -6,32 +6,51 @@
 #include "constants.h"
 #include "Utils.h"
 #include "MathUtils.h"
+#include <iostream>
 
 using namespace std;
 using namespace Utils;
 using namespace MathUtils;
 
 const int RADIUS = 2;
+const float INITIAL_SPEED = 0.005f;
+const float SPEED_INCREASE = 0.004f;
+const float MAX_SPEED = 0.002f; //0.025f;
 
-Orange::Orange(float initialSpeed) {
-	spawnRandomly(initialSpeed);
+Orange::Orange() {
+	spawnRandomly(INITIAL_SPEED);
 	addParts();
 }
 
-void Orange::spawnRandomly(float initialSpeed) {
-	x = randFloat(-50, 50);
+void Orange::spawnRandomly(float newSpeed) {
+	x = randFloat(-40, 40);
 	y = RADIUS;
-	z = randFloat(-50, 50);
-	speed = initialSpeed;
+	z = randFloat(-40, 40);
+	speed = newSpeed;
 	angle = modAngle(randFloat(0, 360));
+	rollAngle = 0;
 }
 
-void Orange::move(int deltaTime) {
+float Orange::movePosition(int deltaTime) {
 	float angleRad = angle * DEG_TO_RAD;
-
 	float deltaPos = speed * deltaTime;
 	x += cos(angleRad) * deltaPos;
 	z -= sin(angleRad) * deltaPos;
+
+	if (abs(x) >= 50 || abs(z) >= 50) {
+		spawnRandomly(fminf(speed + SPEED_INCREASE, MAX_SPEED));
+	}
+
+	return deltaPos;
+}
+
+void Orange::roll(int deltaTime, float deltaPos) {
+	rollAngle = modAngle(rollAngle + RAD_TO_DEG * deltaPos / RADIUS);
+}
+
+void Orange::move(int deltaTime) {
+	float deltaPos = movePosition(deltaTime);
+	roll(deltaTime, deltaPos);
 }
 
 void Orange::addParts() {
@@ -49,4 +68,10 @@ void Orange::addParts() {
 	setMeshProperties(&amesh, amb, diff, spec, emissive, shininess, texIndices, mergeTextureWithColor);
 	
 	this->addPart(amesh);
+
+	amesh = createCube();
+	setMeshProperties(&amesh, amb, diff, spec, emissive, shininess, NULL, mergeTextureWithColor);
+	this->addPart(amesh,
+		2.5f, 0, 0,
+		1.0f, 0.25f, 0.25f);
 }

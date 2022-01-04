@@ -21,10 +21,29 @@ public:
 	
 	vector<Part>* update(int deltaTime);
 
+	float getX() {
+		return x;
+	};
+	float getY() {
+		return y;
+	};
+	float getZ() {
+		return z;
+	};
+	float getAngle() {
+		return angle;
+	}
+	float getRollAngle() {
+		return rollAngle;
+	}
+	void getRollAxis(float* rollAxis); // By reference
+
 protected:
 	float x;
 	float y;
 	float z;
+	float angle;
+	float rollAngle;
 
 	void addPart(MyMesh mesh, float x, float y, float z, 
 		float sX, float sY, float sZ, 

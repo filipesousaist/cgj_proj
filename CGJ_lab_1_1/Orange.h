@@ -3,14 +3,17 @@
 class Orange : public Object
 {
 private:
-	float angle;
 	float speed;
 
-	void spawnRandomly(float initialSpeed);	
+	void spawnRandomly(float initialSpeed);
+
+	float movePosition(int deltaTime);
+	void roll(int deltaTime, float deltaPos);
 	void move(int deltaTime);
+
 	void addParts();
 public:
-	Orange::Orange(float initialSpeed);
+	Orange::Orange();
 
 	string getType() { return "ORANGE"; }
 };

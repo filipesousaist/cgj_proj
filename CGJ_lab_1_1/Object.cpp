@@ -1,8 +1,10 @@
 #pragma once
 #include "Object.h"
+#include <AVTmathLib.h>
 
 Object::Object() {
 	x = y = z = 0;
+	angle = rollAngle = 0;
 	parts = new vector<Part>;
 }
 
@@ -37,4 +39,11 @@ vector<Object::Part>* Object::update(int deltaTime)
 {
 	move(deltaTime);
 	return parts;
+}
+
+void Object::getRollAxis(float* rollAxis) {
+	float direction[] { x, 0, z };
+	normalize(direction);
+	float up[] { 0, 1, 0 };
+	crossProduct(direction, up, rollAxis);
 }

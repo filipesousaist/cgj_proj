@@ -4,8 +4,6 @@
 class Car : public Object
 {
 private:
-	float angle;
-
 	float speed;
 	float angSpeed;
 
@@ -35,18 +33,6 @@ public:
 	void turnLeft(bool active);
 	void turnRight(bool active);
 
-	float getX() {
-		return x;
-	};
-	float getY() {
-		return y;
-	};
-	float getZ() {
-		return z;
-	};
-	float getAngle() {
-		return angle;
-	}
 	float getSpeed() {
 		return speed;
 	}

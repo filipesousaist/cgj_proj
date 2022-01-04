@@ -36,6 +36,7 @@
 
 #include "Object.h"
 #include "Car.h"
+#include "Orange.h"
 #include "constants.h"
 #include "Utils.h"
 
@@ -73,6 +74,8 @@ vector<float> xRotations;
 vector<float> yRotations;
 vector<float> zRotations;
 
+vector<Object*> gameObjects;
+
 Car* car;
 
 Camera cameraProjection;
@@ -108,7 +111,7 @@ float alpha = 39.0f, beta = 51.0f;
 float r = 10.0f;
 
 // Frame counting and FPS computation
-long myTime,timebase = 0,frame = 0;
+long myTime, timebase = 0, frame = 0;
 char s[32];
 float lightPos[4] = {4.0f, 6.0f, 2.0f, 1.0f};
 
@@ -271,55 +274,61 @@ void renderScene(void) {
 	int currentTime = glutGet(GLUT_ELAPSED_TIME);
 	int deltaTime = currentTime - lastTime;
 
-	vector<Object::Part>* parts = car->update(deltaTime);
+	for (Object* obj: gameObjects)
+	{
+		vector<Object::Part>* parts = obj->update(deltaTime);
 
-	for (const Object::Part& part : *parts) {
-		// textures
-		for (int t = 0; t < part.mesh.mat.texCount; t++) {
-			glActiveTexture(GL_TEXTURES[t]);
-			glBindTexture(GL_TEXTURE_2D, TextureArray[part.mesh.mat.texIndices[t]]);
-			glUniform1i(tex_loc[t], t);
-		}
-		loc = glGetUniformLocation(shader.getProgramIndex(), "mergeTextureWithColor");
-		glUniform1i(loc, part.mesh.mat.mergeTextureWithColor);
+		for (const Object::Part& part : *parts) {
+			// textures
+			for (int t = 0; t < part.mesh.mat.texCount; t++) {
+				glActiveTexture(GL_TEXTURES[t]);
+				glBindTexture(GL_TEXTURE_2D, TextureArray[part.mesh.mat.texIndices[t]]);
+				glUniform1i(tex_loc[t], t);
+			}
+			loc = glGetUniformLocation(shader.getProgramIndex(), "mergeTextureWithColor");
+			glUniform1i(loc, part.mesh.mat.mergeTextureWithColor);
 
-		// send the material
-		loc = glGetUniformLocation(shader.getProgramIndex(), "mat.ambient");
-		glUniform4fv(loc, 1, part.mesh.mat.ambient);
-		loc = glGetUniformLocation(shader.getProgramIndex(), "mat.diffuse");
-		glUniform4fv(loc, 1, part.mesh.mat.diffuse);
-		loc = glGetUniformLocation(shader.getProgramIndex(), "mat.specular");
-		glUniform4fv(loc, 1, part.mesh.mat.specular);
-		loc = glGetUniformLocation(shader.getProgramIndex(), "mat.shininess");
-		glUniform1f(loc, part.mesh.mat.shininess);
-		loc = glGetUniformLocation(shader.getProgramIndex(), "mat.texCount");
-		glUniform1i(loc, part.mesh.mat.texCount);
-		pushMatrix(MODEL);
+			// send the material
+			loc = glGetUniformLocation(shader.getProgramIndex(), "mat.ambient");
+			glUniform4fv(loc, 1, part.mesh.mat.ambient);
+			loc = glGetUniformLocation(shader.getProgramIndex(), "mat.diffuse");
+			glUniform4fv(loc, 1, part.mesh.mat.diffuse);
+			loc = glGetUniformLocation(shader.getProgramIndex(), "mat.specular");
+			glUniform4fv(loc, 1, part.mesh.mat.specular);
+			loc = glGetUniformLocation(shader.getProgramIndex(), "mat.shininess");
+			glUniform1f(loc, part.mesh.mat.shininess);
+			loc = glGetUniformLocation(shader.getProgramIndex(), "mat.texCount");
+			glUniform1i(loc, part.mesh.mat.texCount);
+			pushMatrix(MODEL);
 		
-		translate(MODEL, car->getX(), car->getY(), car->getZ());
-		rotate(MODEL, car->getAngle(), 0, 1, 0);
-		translate(MODEL, part.position[0], part.position[1], part.position[2]);
-		rotate(MODEL, part.angle, part.rotationAxis[0], part.rotationAxis[1], part.rotationAxis[2]);
-		scale(MODEL, part.scale[0], part.scale[1], part.scale[2]);
+			translate(MODEL, obj->getX(), obj->getY(), obj->getZ());
+			float rollAxis[3];
+			obj->getRollAxis(rollAxis);
+			rotate(MODEL, obj->getAngle(), 0, 1, 0);
+			rotate(MODEL, obj->getRollAngle(), 0, 0, -1);
+			translate(MODEL, part.position[0], part.position[1], part.position[2]);
+			rotate(MODEL, part.angle, part.rotationAxis[0], part.rotationAxis[1], part.rotationAxis[2]);
+			scale(MODEL, part.scale[0], part.scale[1], part.scale[2]);
 
-		// send matrices to OGL
-		computeDerivedMatrix(PROJ_VIEW_MODEL);
-		glUniformMatrix4fv(vm_uniformId, 1, GL_FALSE, mCompMatrix[VIEW_MODEL]);
-		glUniformMatrix4fv(pvm_uniformId, 1, GL_FALSE, mCompMatrix[PROJ_VIEW_MODEL]);
-		computeNormalMatrix3x3();
-		glUniformMatrix3fv(normal_uniformId, 1, GL_FALSE, mNormal3x3);
+			// send matrices to OGL
+			computeDerivedMatrix(PROJ_VIEW_MODEL);
+			glUniformMatrix4fv(vm_uniformId, 1, GL_FALSE, mCompMatrix[VIEW_MODEL]);
+			glUniformMatrix4fv(pvm_uniformId, 1, GL_FALSE, mCompMatrix[PROJ_VIEW_MODEL]);
+			computeNormalMatrix3x3();
+			glUniformMatrix3fv(normal_uniformId, 1, GL_FALSE, mNormal3x3);
 
-		// Render mesh
-		glBindVertexArray(part.mesh.vao);
+			// Render mesh
+			glBindVertexArray(part.mesh.vao);
 
-		if (!shader.isProgramValid()) {
-			std::printf("Program Not Valid!\n");
-			exit(1);
+			if (!shader.isProgramValid()) {
+				std::printf("Program Not Valid!\n");
+				exit(1);
+			}
+			glDrawElements(part.mesh.type, part.mesh.numIndexes, GL_UNSIGNED_INT, 0);
+			glBindVertexArray(0);
+
+			popMatrix(MODEL);
 		}
-		glDrawElements(part.mesh.type, part.mesh.numIndexes, GL_UNSIGNED_INT, 0);
-		glBindVertexArray(0);
-
-		popMatrix(MODEL);
 	}
 
 	//Render text (bitmap fonts) in screen coordinates. So use ortoghonal projection with viewport coordinates.
@@ -549,7 +558,7 @@ GLuint setupShaders() {
 //
 
 void createTable() {
-float amb[] = { 0.2f, 0.15f, 0.1f, 1.0f };
+	float amb[] = { 0.2f, 0.15f, 0.1f, 1.0f };
 	float diff[] = { 0.8f, 0.6f, 0.4f, 1.0f };
 	float spec[] = { 0.8f, 0.8f, 0.8f, 1.0f };
 	float emissive[] = { 0.0f, 0.0f, 0.0f, 1.0f };
@@ -750,6 +759,12 @@ void createScene() {
 	createOrange();
 	
 	car = new Car();
+	gameObjects.push_back(car);
+
+	for (int o = 0; o < NUM_ORANGES; o++)
+	{
+		gameObjects.push_back(new Orange());
+	}
 }
 
 void init()
