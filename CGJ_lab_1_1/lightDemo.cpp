@@ -94,7 +94,6 @@ extern float mNormal3x3[9];
 GLint pvm_uniformId;
 GLint vm_uniformId;
 GLint normal_uniformId;
-GLint lPos_uniformId;
 GLint tex_loc[2];
 GLint texMode_uniformId;
 
@@ -113,7 +112,14 @@ float r = 10.0f;
 // Frame counting and FPS computation
 long myTime, timebase = 0, frame = 0;
 char s[32];
-float lightPos[4] = {4.0f, 6.0f, 2.0f, 1.0f};
+float lightPos[NUM_LIGHTS][4] {
+	{-35.0f, 6.0f, -35.0f, 1.0f},
+	{-35.0f, 6.0f, 35.0f, 1.0f},
+	{35.0f, 6.0f, -35.0f, 1.0f},
+	{35.0f, 6.0f, 35.0f, 1.0f},
+	{0.0f, 6.0f, -15.0f, 1.0f},
+	{0.0f, 6.0f, 15.0f, 1.0f}
+};
 
 
 void timer(int value)
@@ -218,9 +224,15 @@ void renderScene(void) {
 	//send the light position in eye coordinates
 	//glUniform4fv(lPos_uniformId, 1, lightPos); //efeito capacete do mineiro, ou seja lighPos foi definido em eye coord 
 
-	float res[4];
-	multMatrixPoint(VIEW, lightPos, res);   //lightPos definido em World Coord so is converted to eye space
-	glUniform4fv(lPos_uniformId, 1, res);
+	for (int i = 0; i < NUM_LIGHTS; i++) {
+		float res[4];
+		multMatrixPoint(VIEW, lightPos[i], res);   //lightPos definido em World Coord so is converted to eye space
+		stringstream ss;
+		ss.str("");
+		ss << "l_pos[" << i << "]";
+		GLint lPos_uniformId = glGetUniformLocation(shader.getProgramIndex(), ss.str().c_str());
+		glUniform4fv(lPos_uniformId, 1, res);
+	}
 
 	int objId = 0; //id of the object mesh - to be used as index of mesh: Mymeshes[objID] means the current mesh
 
@@ -535,7 +547,6 @@ GLuint setupShaders() {
 	pvm_uniformId = glGetUniformLocation(shader.getProgramIndex(), "m_pvm");
 	vm_uniformId = glGetUniformLocation(shader.getProgramIndex(), "m_viewModel");
 	normal_uniformId = glGetUniformLocation(shader.getProgramIndex(), "m_normal");
-	lPos_uniformId = glGetUniformLocation(shader.getProgramIndex(), "l_pos");
 	tex_loc[0] = glGetUniformLocation(shader.getProgramIndex(), "texmap");
 	tex_loc[1] = glGetUniformLocation(shader.getProgramIndex(), "texmap1");
 
@@ -585,48 +596,14 @@ void createTable() {
 	zRotations.push_back(0);
 }
 
-void createLimits() {
-	float amb[] = { 0.15f, 0.15f, 0.15f, 1.0f };
-	float diff[] = { 0.8f, 0.8f, 0.8f, 1.0f };
-	float spec[] = { 0.8f, 0.8f, 0.8f, 1.0f };
-	float emissive[] = { 0.0f, 0.0f, 0.0f, 1.0f };
-	float shininess = 300.0f;
-	int* texIndices = NULL;
-	int mergeTextureWithColor = false;
-
-	MyMesh amesh = createCube();
-	setMeshProperties(&amesh, amb, diff, spec, emissive, shininess, texIndices, mergeTextureWithColor);
-	
-	float signs[]{ -1, 1 };
-
-	for (int sign = 0; sign < 2; sign++) {
-		float zSign = signs[sign];
-		// Left limit
-		myMeshes.push_back(amesh);
-
-		xScales.push_back(80.0f);
-		yScales.push_back(0.01f);
-		zScales.push_back(0.5f);
-
-		xPositions.push_back(-40.0f);
-		yPositions.push_back(0);
-		zPositions.push_back(2.0f * zSign - 0.25f);
-
-		angles.push_back(0);
-		xRotations.push_back(1.0f);
-		yRotations.push_back(0);
-		zRotations.push_back(0);
-	}
-}
-
 void createCheerios() {
 	float amb[] = { 0.6f, 0.48f, 0.0f, 1.0f };
-	float diff[] = { 0.8f, 0.8f, 0.2f, 1.0f };
-	float spec[] = { 0.2f, 0.2f, 0.2f, 1.0f };
+	float diff[] = { 0.6f, 0.4f, 0.1f, 1.0f };
+	float spec[] = { 0.15f, 0.15f, 0.15f, 1.0f };
 	float emissive[] = { 0.0f, 0.0f, 0.0f, 1.0f };
-	float shininess = 80.0f;
-	int* texIndices = NULL;
-	bool mergeTextureWithColor = false;
+	float shininess = 60.0f;
+	int texIndices[2] {WOOD_TEX, NO_TEX};
+	bool mergeTextureWithColor = true;
 
 	MyMesh amesh = createTorus(0.2f, 0.4f, 12, 12);
 	setMeshProperties(&amesh, amb, diff, spec, emissive, shininess, texIndices, mergeTextureWithColor);
@@ -653,11 +630,6 @@ void createCheerios() {
 			zRotations.push_back(0);
 		}
 	}
-}
-
-void createRoad() {
-	createLimits();
-	createCheerios();
 }
 
 void createButter() {
@@ -706,44 +678,6 @@ void createButter() {
 	}
 }
 
-void createOrange() {
-	float amb[] = { 0.8f, 0.4f, 0.0f, 1.0f };
-	float diff[] = { 0.6f, 0.6f, 0.2f, 1.0f };
-	float spec[] = { 0.2f, 0.2f, 0.2f, 1.0f };
-	float emissive[] = { 0.0f, 0.0f, 0.0f, 1.0f };
-	float shininess = 80.0f;
-	int texIndices[2] = { ORANGE_TEX, NO_TEX };
-	bool mergeTextureWithColor = false;
-
-	MyMesh amesh = createSphere(2, 12);
-	setMeshProperties(&amesh, amb, diff, spec, emissive, shininess, texIndices, mergeTextureWithColor);
-
-	float positions[] {
-		14, 5,
-		19, -4,
-		28, 5
-	};
-
-	int numOranges = (sizeof(positions) / 2) / sizeof(float);
-
-	for (int i = 0; i < numOranges; i++) {
-		myMeshes.push_back(amesh);
-
-		xScales.push_back(1.0f);
-		yScales.push_back(1.0f);
-		zScales.push_back(1.0f);
-
-		xPositions.push_back(positions[2 * i]);
-		yPositions.push_back(2.0f);
-		zPositions.push_back(positions[2 * i + 1]);
-
-		angles.push_back(0);
-		xRotations.push_back(1.0f);
-		yRotations.push_back(0);
-		zRotations.push_back(0);
-	}
-}
-
 void createScene() {
 	//Texture Object definition
 
@@ -754,9 +688,8 @@ void createScene() {
 	Texture2D_Loader(TextureArray, "orangeTex.png", ORANGE_TEX);
 
 	createTable();
-	createRoad();
+	createCheerios();
 	createButter();
-	createOrange();
 	
 	car = new Car();
 	gameObjects.push_back(car);

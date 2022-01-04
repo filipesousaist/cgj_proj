@@ -64,14 +64,17 @@ void Orange::addParts() {
 	int texIndices[] = { ORANGE_TEX, NO_TEX };
 	bool mergeTextureWithColor = false;
 
-	amesh = createSphere(2, 12);
+	amesh = createSphere(2, 20);
 	setMeshProperties(&amesh, amb, diff, spec, emissive, shininess, texIndices, mergeTextureWithColor);
 	
 	this->addPart(amesh);
-
+	
+	// DEBUG
+	/* 
 	amesh = createCube();
 	setMeshProperties(&amesh, amb, diff, spec, emissive, shininess, NULL, mergeTextureWithColor);
 	this->addPart(amesh,
 		2.5f, 0, 0,
 		1.0f, 0.25f, 0.25f);
+	*/
 }
