@@ -113,14 +113,13 @@ float r = 10.0f;
 long myTime, timebase = 0, frame = 0;
 char s[32];
 float lightPos[NUM_LIGHTS][4] {
-	{-35.0f, 6.0f, -35.0f, 1.0f},
-	{-35.0f, 6.0f, 35.0f, 1.0f},
-	{35.0f, 6.0f, -35.0f, 1.0f},
-	{35.0f, 6.0f, 35.0f, 1.0f},
-	{0.0f, 6.0f, -15.0f, 1.0f},
-	{0.0f, 6.0f, 15.0f, 1.0f}
+	{-35.0f, 4.0f, -35.0f, 1.0f},
+	{-35.0f, 4.0f, 35.0f, 1.0f},
+	{35.0f, 4.0f, -35.0f, 1.0f},
+	{35.0f, 4.0f, 35.0f, 1.0f},
+	{0.0f, 4.0f, -15.0f, 1.0f},
+	{0.0f, 4.0f, 15.0f, 1.0f}
 };
-
 
 void timer(int value)
 {
@@ -203,6 +202,11 @@ void updateCarCamera() {
 void renderScene(void) {
 	GLint loc;
 
+	int currentTime = glutGet(GLUT_ELAPSED_TIME);
+	int deltaTime = currentTime - lastTime;
+
+	
+
 	FrameCount++;
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 	// load identity matrices
@@ -232,6 +236,11 @@ void renderScene(void) {
 		ss << "l_pos[" << i << "]";
 		GLint lPos_uniformId = glGetUniformLocation(shader.getProgramIndex(), ss.str().c_str());
 		glUniform4fv(lPos_uniformId, 1, res);
+	}
+
+	for (Object* obj : gameObjects)
+	{
+		obj->update(deltaTime);
 	}
 
 	int objId = 0; //id of the object mesh - to be used as index of mesh: Mymeshes[objID] means the current mesh
@@ -283,12 +292,9 @@ void renderScene(void) {
 		objId ++;
 	}
 
-	int currentTime = glutGet(GLUT_ELAPSED_TIME);
-	int deltaTime = currentTime - lastTime;
-
 	for (Object* obj: gameObjects)
 	{
-		vector<Object::Part>* parts = obj->update(deltaTime);
+		vector<Object::Part>* parts = obj->getParts();
 
 		for (const Object::Part& part : *parts) {
 			// textures
@@ -571,7 +577,7 @@ GLuint setupShaders() {
 void createTable() {
 	float amb[] = { 0.2f, 0.15f, 0.1f, 1.0f };
 	float diff[] = { 0.8f, 0.6f, 0.4f, 1.0f };
-	float spec[] = { 0.8f, 0.8f, 0.8f, 1.0f };
+	float spec[] = { 0.2f, 0.2f, 0.2f, 1.0f };
 	float emissive[] = { 0.0f, 0.0f, 0.0f, 1.0f };
 	float shininess = 100.0f;
 	int texIndices[] = { WOOD_TEX, CHECKERS_TEX };
@@ -678,6 +684,50 @@ void createButter() {
 	}
 }
 
+void createCandles() {
+	MyMesh amesh;
+
+	float amb[] = { 1.0f, 1.0f, 0.7f, 1.0f };
+	float diff[] = { 0.8f, 0.8f, 0.2f, 1.0f };
+	float spec[] = { 0.0f, 0.0f, 0.0f, 1.0f };
+	float emissive[] = { 0.0f, 0.0f, 0.0f, 1.0f };
+	float shininess = 80.0f;
+	int* texIndices = NULL;
+	bool mergeTextureWithColor = false;
+	float height = 3.5f;
+
+	amesh = createCylinder(height, 0.75f, 20);
+	setMeshProperties(&amesh, amb, diff, spec, emissive, shininess, texIndices, mergeTextureWithColor);
+
+	float positions[]{
+		-35.0f, -35.0f,
+		-35.0f, 35.0f,
+		35.0f, -35.0f,
+		35.0f, 35.0f,
+		0.0f, -15.0f,
+		0.0, 15.0f
+	};
+
+	int numCandles = sizeof(positions) / sizeof(float);
+
+	for (int i = 0; i < numCandles; i++) {
+		myMeshes.push_back(amesh);
+
+		xScales.push_back(1.0f);
+		yScales.push_back(1.0f);
+		zScales.push_back(1.0f);
+
+		xPositions.push_back(positions[2 * i]);
+		yPositions.push_back(height/2);
+		zPositions.push_back(positions[2 * i + 1]);
+
+		angles.push_back(0);
+		xRotations.push_back(1.0f);
+		yRotations.push_back(0);
+		zRotations.push_back(0);
+	}
+}
+
 void createScene() {
 	//Texture Object definition
 
@@ -690,8 +740,9 @@ void createScene() {
 	createTable();
 	createCheerios();
 	createButter();
+	createCandles();
 	
-	car = new Car();
+	car = new Car(&shader);
 	gameObjects.push_back(car);
 
 	for (int o = 0; o < NUM_ORANGES; o++)

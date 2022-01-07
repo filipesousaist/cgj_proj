@@ -1,9 +1,12 @@
 #pragma once
 #include "Object.h"
+#include <vsShaderLib.h>
 
 class Car : public Object
 {
 private:
+	VSShaderLib* shader;
+
 	float speed;
 	float angSpeed;
 
@@ -17,15 +20,17 @@ private:
 
 	void movePosition(int deltaTime);
 	void moveAngle(int deltaTime);
+	void moveSpotLights(int deltaTime);
 
 	void move(int deltaTime);
 	void addParts();
 
 	void addBody();
 	void addWheels();
+	void addSpotLights();
 	
 public:
-	Car::Car();
+	Car::Car(VSShaderLib* shader);
 
 	void accelerate(bool active);
 	void accelerateBack(bool active);

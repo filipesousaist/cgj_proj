@@ -19,7 +19,9 @@ public:
 		float rotationAxis[3];
 	};
 	
-	vector<Part>* update(int deltaTime);
+	void update(int deltaTime);
+
+	vector<Part>* getParts();
 
 	float getX() {
 		return x;

@@ -2,10 +2,12 @@
 
 #include "Car.h"
 #include <string>
+#include <sstream>
 #include <math.h>
 #include "constants.h"
 #include "Utils.h"
 #include "MathUtils.h"
+#include <AVTmathLib.h>
 
 using namespace std;
 using namespace Utils;
@@ -15,7 +17,12 @@ const float ACC = 1e-5f;
 const float ANG_SPEED = 2e-2f;
 const float MAX_SPEED = 3e-3f;
 
-Car::Car() {
+float spotLightPos[NUM_SPOT_LIGHTS][4]{
+	{1.0f, 0.5f, -0.25f, 1.0f},
+	{1.0f, 0.5f, 0.25f, 1.0f}
+};
+
+Car::Car(VSShaderLib* shader) {
 	angle = 0;
 	rollAngle = 0;
 
@@ -24,12 +31,15 @@ Car::Car() {
 
 	accTang = accNorm = 0;
 
+	this->shader = shader;
+
 	addParts();
 }
 
 void Car::addParts() {
 	addBody();
 	addWheels();
+	addSpotLights();
 }
 
 void Car::addBody() {
@@ -84,9 +94,34 @@ void Car::addWheels() {
 	}
 }
 
+void Car::addSpotLights() {
+	MyMesh amesh;
+
+	float amb[] = { 0.8f, 0.4f, 0.0f, 1.0f };
+	float diff[] = { 0.6f, 0.6f, 0.2f, 1.0f };
+	float spec[] = { 0.2f, 0.2f, 0.2f, 1.0f };
+	float emissive[] = { 0.0f, 0.0f, 0.0f, 1.0f };
+	float shininess = 80.0f;
+	int* texIndices = NULL;
+	bool mergeTextureWithColor = false;
+
+	amesh = createSphere(0.1f, 20);
+	setMeshProperties(&amesh, amb, diff, spec, emissive, shininess, texIndices, mergeTextureWithColor);
+
+	float signs[]{ -1, 1 };
+
+	for (int i = 0; i < NUM_SPOT_LIGHTS; i++) {
+		float zSign = signs[i];
+		this->addPart(
+				amesh,
+				1.0f, 0.5f, 0.25 * zSign);
+	}
+}
+
 void Car::move(int deltaTime) {
 	movePosition(deltaTime);
 	moveAngle(deltaTime);
+	moveSpotLights(deltaTime);
 }
 
 void Car::moveAngle(int deltaTime) {
@@ -116,8 +151,43 @@ void Car::movePosition(int deltaTime) {
 	x += cos(angleRad) * deltaPos;
 	z -= sin(angleRad) * deltaPos;
 
-	float accDrag = speed * 3e-4;
+	float accDrag = speed * 3e-4f;
 	speed += (ACC * accMult - accDrag) * deltaTime;
+}
+
+void Car::moveSpotLights(int deltaTime) {
+	
+	float angleRad = angle * DEG_TO_RAD;
+	float spotLightDir[4]{ cos(angleRad), 0.0f, -sin(angleRad), 1.0f };
+
+	for (int i = 0; i < NUM_SPOT_LIGHTS; i++) {
+		pushMatrix(MODEL);
+		translate(MODEL, getX(), getY(), getZ());
+		rotate(MODEL, getAngle(), 0, 1, 0);
+		translate(MODEL, spotLightPos[i][0], spotLightPos[i][1], spotLightPos[i][2]);
+		
+		float res[4];
+		multMatrixPoint(MODEL, new float[4]{ 0.0f, 0.0f, 0.0f, 1.0f }, res);
+		multMatrixPoint(VIEW, res, res);   //lightPos definido em World Coord so is converted to eye space
+		stringstream ss;
+		ss.str("");
+		ss << "sl_pos[" << i << "]";
+		GLint slPos_uniformId = glGetUniformLocation(shader->getProgramIndex(), ss.str().c_str());
+		glUniform4fv(slPos_uniformId, 1, res);
+		popMatrix(MODEL);
+
+		pushMatrix(MODEL);
+		//rotate(MODEL, getAngle(), 0, 1, 0);
+		multMatrixPoint(MODEL, new float[4]{ 1.0f, 0.0f, 0.0f, 0.0f }, res);
+		multMatrixPoint(VIEW, res, res);
+		
+		ss.str("");
+		ss << "coneDir[" << i << "]";
+		GLint coneDir_uniformId = glGetUniformLocation(shader->getProgramIndex(), ss.str().c_str());
+		glUniform4fv(coneDir_uniformId, 1, new float[4]{0.0f, 0.0f, -1.0f, 0.0f});
+
+		popMatrix(MODEL);
+	}
 }
 
 void Car::accelerate(bool active) {

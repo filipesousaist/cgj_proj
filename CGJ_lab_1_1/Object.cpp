@@ -35,9 +35,12 @@ void Object::addPart(MyMesh mesh) {
 	addPart(mesh, 0, 0, 0, 1, 1, 1, 0, 1, 0, 0);
 }
 
-vector<Object::Part>* Object::update(int deltaTime)
+void Object::update(int deltaTime)
 {
 	move(deltaTime);
+}
+
+vector<Object::Part>* Object::getParts() {
 	return parts;
 }
 

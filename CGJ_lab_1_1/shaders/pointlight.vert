@@ -2,11 +2,17 @@
 
 #define NUM_POINT_LIGHTS 6
 
+#define NUM_SPOT_LIGHTS 2
+
 uniform mat4 m_pvm;
 uniform mat4 m_viewModel;
 uniform mat3 m_normal;
 
 uniform vec4 l_pos[NUM_POINT_LIGHTS];
+
+uniform vec4 sl_pos[NUM_SPOT_LIGHTS];
+
+uniform vec4 coneDir[NUM_SPOT_LIGHTS];
 
 in vec4 position;
 in vec4 normal;    //por causa do gerador de geometria
@@ -16,6 +22,8 @@ out Data {
 	vec3 normal;
 	vec3 eye;
 	vec3 lightDir[NUM_POINT_LIGHTS];
+	vec3 spotLightDir[NUM_SPOT_LIGHTS];
+	vec4 coneDir[NUM_SPOT_LIGHTS];
 	vec2 tex_coord;
 
 } DataOut;
@@ -29,6 +37,10 @@ void main () {
 	DataOut.normal = normalize(m_normal * normal.xyz);
 	for (int i = 0; i < NUM_POINT_LIGHTS; i ++)
 		DataOut.lightDir[i] = vec3(l_pos[i] - pos);
+	for (int i = 0; i < NUM_SPOT_LIGHTS; i ++){
+		DataOut.spotLightDir[i] = vec3(sl_pos[i] - pos);
+		DataOut.coneDir[i] = coneDir[i];
+	}
 	DataOut.eye = vec3(-pos);
 	DataOut.tex_coord = texCoord.st;
 
