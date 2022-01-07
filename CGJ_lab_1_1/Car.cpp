@@ -160,6 +160,12 @@ void Car::moveSpotLights(int deltaTime) {
 	float angleRad = angle * DEG_TO_RAD;
 	float spotLightDir[4]{ cos(angleRad), 0.0f, -sin(angleRad), 1.0f };
 
+	float dirX = cos(angleRad);
+	float dirZ = sin(angleRad);
+
+	float perpX = cos(angleRad + 3.14f / 2);
+	float perpZ = sin(angleRad + 3.14f / 2);
+
 	for (int i = 0; i < NUM_SPOT_LIGHTS; i++) {
 		pushMatrix(MODEL);
 		translate(MODEL, getX(), getY(), getZ());
@@ -178,13 +184,13 @@ void Car::moveSpotLights(int deltaTime) {
 
 		pushMatrix(MODEL);
 		//rotate(MODEL, getAngle(), 0, 1, 0);
-		multMatrixPoint(MODEL, new float[4]{ 1.0f, 0.0f, 0.0f, 0.0f }, res);
+		multMatrixPoint(MODEL, new float[4]{ getX() + 1.0f, getY(), getZ(), 1.0f }, res);
 		multMatrixPoint(VIEW, res, res);
 		
 		ss.str("");
 		ss << "coneDir[" << i << "]";
 		GLint coneDir_uniformId = glGetUniformLocation(shader->getProgramIndex(), ss.str().c_str());
-		glUniform4fv(coneDir_uniformId, 1, new float[4]{0.0f, 0.0f, -1.0f, 0.0f});
+		glUniform4fv(coneDir_uniformId, 1, res);
 
 		popMatrix(MODEL);
 	}

@@ -112,7 +112,10 @@ float r = 10.0f;
 // Frame counting and FPS computation
 long myTime, timebase = 0, frame = 0;
 char s[32];
-float lightPos[NUM_LIGHTS][4] {
+
+float lightPos[4]{ 1.0f, 1000.0f, 1.0f, 0.0f };
+
+float pointLightPos[NUM_LIGHTS][4] {
 	{-35.0f, 4.0f, -35.0f, 1.0f},
 	{-35.0f, 4.0f, 35.0f, 1.0f},
 	{35.0f, 4.0f, -35.0f, 1.0f},
@@ -120,6 +123,11 @@ float lightPos[NUM_LIGHTS][4] {
 	{0.0f, 4.0f, -15.0f, 1.0f},
 	{0.0f, 4.0f, 15.0f, 1.0f}
 };
+
+bool day = true;
+bool candles = true;
+bool headlights = true;
+bool fog = false;
 
 void timer(int value)
 {
@@ -225,17 +233,34 @@ void renderScene(void) {
 	// use our shader
 	glUseProgram(shader.getProgramIndex());
 
+	loc = glGetUniformLocation(shader.getProgramIndex(), "day");
+	glUniform1i(loc, day);
+
+	loc = glGetUniformLocation(shader.getProgramIndex(), "candles");
+	glUniform1i(loc, candles);
+	
+	loc = glGetUniformLocation(shader.getProgramIndex(), "headlights");
+	glUniform1i(loc, headlights);
+	
+	loc = glGetUniformLocation(shader.getProgramIndex(), "fog");
+	glUniform1i(loc, fog);
+
 	//send the light position in eye coordinates
 	//glUniform4fv(lPos_uniformId, 1, lightPos); //efeito capacete do mineiro, ou seja lighPos foi definido em eye coord 
 
+	float res[4];
+	multMatrixPoint(VIEW, lightPos, res);
+	GLint lPos_uniformId = glGetUniformLocation(shader.getProgramIndex(), "l_pos");
+	glUniform4fv(lPos_uniformId, 1, res);
+
 	for (int i = 0; i < NUM_LIGHTS; i++) {
 		float res[4];
-		multMatrixPoint(VIEW, lightPos[i], res);   //lightPos definido em World Coord so is converted to eye space
+		multMatrixPoint(VIEW, pointLightPos[i], res);   //lightPos definido em World Coord so is converted to eye space
 		stringstream ss;
 		ss.str("");
-		ss << "l_pos[" << i << "]";
-		GLint lPos_uniformId = glGetUniformLocation(shader.getProgramIndex(), ss.str().c_str());
-		glUniform4fv(lPos_uniformId, 1, res);
+		ss << "pl_pos[" << i << "]";
+		GLint plPos_uniformId = glGetUniformLocation(shader.getProgramIndex(), ss.str().c_str());
+		glUniform4fv(plPos_uniformId, 1, res);
 	}
 
 	for (Object* obj : gameObjects)
@@ -416,6 +441,14 @@ void processKeys(unsigned char key, int xx, int yy)
 		car->turnLeft(true); break;
 	case 'd':
 		car->turnRight(true); break;
+	case 'o': // night mode
+		day = !day; break;
+	case 'p': // candles
+		candles = !candles; break;
+	case 'h': // headlights
+		headlights = !headlights; break;
+	case 'f': // fog
+		fog = !fog; break;
 	}
 }
 
@@ -687,8 +720,8 @@ void createButter() {
 void createCandles() {
 	MyMesh amesh;
 
-	float amb[] = { 1.0f, 1.0f, 0.7f, 1.0f };
-	float diff[] = { 0.8f, 0.8f, 0.2f, 1.0f };
+	float amb[] = { 0.2f, 0.2f, 0.2f, 1.0f };
+	float diff[] = { 1.0f, 1.0f, 0.7f, 1.0f };
 	float spec[] = { 0.0f, 0.0f, 0.0f, 1.0f };
 	float emissive[] = { 0.0f, 0.0f, 0.0f, 1.0f };
 	float shininess = 80.0f;

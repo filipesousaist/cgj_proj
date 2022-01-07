@@ -8,7 +8,9 @@ uniform mat4 m_pvm;
 uniform mat4 m_viewModel;
 uniform mat3 m_normal;
 
-uniform vec4 l_pos[NUM_POINT_LIGHTS];
+uniform vec4 l_pos;
+
+uniform vec4 pl_pos[NUM_POINT_LIGHTS];
 
 uniform vec4 sl_pos[NUM_SPOT_LIGHTS];
 
@@ -21,7 +23,8 @@ in vec4 texCoord;
 out Data {
 	vec3 normal;
 	vec3 eye;
-	vec3 lightDir[NUM_POINT_LIGHTS];
+	vec3 directLightDir;
+	vec3 pointLightDir[NUM_POINT_LIGHTS];
 	vec3 spotLightDir[NUM_SPOT_LIGHTS];
 	vec4 coneDir[NUM_SPOT_LIGHTS];
 	vec2 tex_coord;
@@ -35,8 +38,9 @@ void main () {
 	pos = m_viewModel * position;
 
 	DataOut.normal = normalize(m_normal * normal.xyz);
+	DataOut.directLightDir = vec3(l_pos - pos);
 	for (int i = 0; i < NUM_POINT_LIGHTS; i ++)
-		DataOut.lightDir[i] = vec3(l_pos[i] - pos);
+		DataOut.pointLightDir[i] = vec3(pl_pos[i] - pos);
 	for (int i = 0; i < NUM_SPOT_LIGHTS; i ++){
 		DataOut.spotLightDir[i] = vec3(sl_pos[i] - pos);
 		DataOut.coneDir[i] = coneDir[i];
