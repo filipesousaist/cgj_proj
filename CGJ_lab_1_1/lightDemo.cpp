@@ -37,6 +37,9 @@
 #include "Object.h"
 #include "Car.h"
 #include "Orange.h"
+#include "Butter.h"
+#include "Cheerio.h"
+#include "Candle.h"
 #include "constants.h"
 #include "Utils.h"
 
@@ -635,132 +638,6 @@ void createTable() {
 	zRotations.push_back(0);
 }
 
-void createCheerios() {
-	float amb[] = { 0.6f, 0.48f, 0.0f, 1.0f };
-	float diff[] = { 0.6f, 0.4f, 0.1f, 1.0f };
-	float spec[] = { 0.15f, 0.15f, 0.15f, 1.0f };
-	float emissive[] = { 0.0f, 0.0f, 0.0f, 1.0f };
-	float shininess = 60.0f;
-	int texIndices[2] {WOOD_TEX, NO_TEX};
-	bool mergeTextureWithColor = true;
-
-	MyMesh amesh = createTorus(0.2f, 0.4f, 12, 12);
-	setMeshProperties(&amesh, amb, diff, spec, emissive, shininess, texIndices, mergeTextureWithColor);
-	
-	float signs[]{ -1, 1 };
-
-	for (int sign = 0; sign < 2; sign++) {
-		float zSign = signs[sign];
-
-		for (float x = -40.0f; x <= 40.0f; x += 2) {
-			myMeshes.push_back(amesh);
-
-			xScales.push_back(1.0f);
-			yScales.push_back(1.0f);
-			zScales.push_back(1.0f);
-
-			xPositions.push_back(x);
-			yPositions.push_back(0.1f);
-			zPositions.push_back(3.0f * zSign);
-
-			angles.push_back(0);
-			xRotations.push_back(1.0f);
-			yRotations.push_back(0);
-			zRotations.push_back(0);
-		}
-	}
-}
-
-void createButter() {
-	MyMesh amesh;
-
-	float amb[] = { 0.6f, 0.48f, 0.0f, 1.0f };
-	float diff[] = { 0.8f, 0.8f, 0.2f, 1.0f };
-	float spec[] = { 0.2f, 0.2f, 0.2f, 1.0f };
-	float emissive[] = { 0.0f, 0.0f, 0.0f, 1.0f };
-	float shininess = 80.0f;
-	int* texIndices = NULL;
-	bool mergeTextureWithColor = false;
-
-	amesh = createCube();
-	setMeshProperties(&amesh, amb, diff, spec, emissive, shininess, texIndices, mergeTextureWithColor);
-
-	float positions[] {
-		14, 1,
-		19, -0.75f,
-		28, 1
-	};
-
-	float rotations[] {
-		0,
-		45,
-		90
-	};
-
-	int numButters = sizeof(rotations) / sizeof(float);
-
-	for (int i = 0; i < numButters; i++) {
-		myMeshes.push_back(amesh);
-
-		xScales.push_back(2.0f);
-		yScales.push_back(0.5f);
-		zScales.push_back(1.0f);
-
-		xPositions.push_back(-1.0f + positions[2 * i]);
-		yPositions.push_back(0);
-		zPositions.push_back(-0.5f + positions[2 * i + 1]);
-
-		angles.push_back(rotations[i]);
-		xRotations.push_back(0);
-		yRotations.push_back(1.0f);
-		zRotations.push_back(0);
-	}
-}
-
-void createCandles() {
-	MyMesh amesh;
-
-	float amb[] = { 0.2f, 0.2f, 0.2f, 1.0f };
-	float diff[] = { 1.0f, 1.0f, 0.7f, 1.0f };
-	float spec[] = { 0.0f, 0.0f, 0.0f, 1.0f };
-	float emissive[] = { 0.0f, 0.0f, 0.0f, 1.0f };
-	float shininess = 80.0f;
-	int* texIndices = NULL;
-	bool mergeTextureWithColor = false;
-	float height = 3.5f;
-
-	amesh = createCylinder(height, 0.75f, 20);
-	setMeshProperties(&amesh, amb, diff, spec, emissive, shininess, texIndices, mergeTextureWithColor);
-
-	float positions[]{
-		-35.0f, -35.0f,
-		-35.0f, 35.0f,
-		35.0f, -35.0f,
-		35.0f, 35.0f,
-		0.0f, -15.0f,
-		0.0, 15.0f
-	};
-
-	int numCandles = sizeof(positions) / sizeof(float);
-
-	for (int i = 0; i < numCandles; i++) {
-		myMeshes.push_back(amesh);
-
-		xScales.push_back(1.0f);
-		yScales.push_back(1.0f);
-		zScales.push_back(1.0f);
-
-		xPositions.push_back(positions[2 * i]);
-		yPositions.push_back(height/2);
-		zPositions.push_back(positions[2 * i + 1]);
-
-		angles.push_back(0);
-		xRotations.push_back(1.0f);
-		yRotations.push_back(0);
-		zRotations.push_back(0);
-	}
-}
-
 void createScene() {
 	//Texture Object definition
 
@@ -771,9 +648,6 @@ void createScene() {
 	Texture2D_Loader(TextureArray, "orangeTex.png", ORANGE_TEX);
 
 	createTable();
-	createCheerios();
-	createButter();
-	createCandles();
 	
 	car = new Car(&shader);
 	gameObjects.push_back(car);
@@ -781,6 +655,51 @@ void createScene() {
 	for (int o = 0; o < NUM_ORANGES; o++)
 	{
 		gameObjects.push_back(new Orange());
+	}
+
+	float butterPositions[]{
+		14, 1,
+		19, -0.75f,
+		28, 1
+	};
+
+	float butterRotations[]{
+		0,
+		45,
+		90
+	};
+	for (int i = 0; i < sizeof(butterRotations) / sizeof(float); i++)
+	{
+		gameObjects.push_back(new Butter(-1.0f + butterPositions[2 * i], 0, -0.5f + butterPositions[2 * i + 1],
+			2.0f, 0.5f, 1.0f,
+			butterRotations[i], 0, 1.0f, 0));
+	}
+
+	float signs[]{ -1, 1 };
+
+	for (int sign = 0; sign < 2; sign++) {
+		float zSign = signs[sign];
+
+		for (float x = -40.0f; x <= 40.0f; x += 2) {
+			gameObjects.push_back(new Cheerio(x, 0.1f, 3.0f * zSign,
+				1.0f, 1.0f, 1.0f,
+				0, 1.0f, 0, 0));
+		}
+	}
+
+	float candlePositions[]{
+		-35.0f, -35.0f,
+		-35.0f, 35.0f,
+		35.0f, -35.0f,
+		35.0f, 35.0f,
+		0.0f, -15.0f,
+		0.0, 15.0f
+	};
+
+	for (int i = 0; i < sizeof(candlePositions) / sizeof(float); i++) {
+		gameObjects.push_back(new Candle(candlePositions[2 * i], 0, candlePositions[2 * i + 1],
+			1.0f, 1.0f, 1.0f,
+			0, 1.0f, 0, 0));
 	}
 }
 
