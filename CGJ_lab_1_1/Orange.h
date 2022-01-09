@@ -2,11 +2,14 @@
 #include "Object.h"
 
 #include <string>
+#include "Car.h"
 
 class Orange : public Object
 {
 private:
 	float speed;
+
+	Car* car;
 
 	void spawnRandomly(float initialSpeed);
 
@@ -17,8 +20,8 @@ private:
 	void addParts();
 
 public:
-	Orange::Orange();
+	Orange::Orange(Car* car);
 	
-	string collides();
+	void handleCollision();
 };
 

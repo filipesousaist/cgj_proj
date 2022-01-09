@@ -657,7 +657,7 @@ void createScene() {
 	gameObjects.push_back(car);
 
 	for (int o = 0; o < NUM_ORANGES; o++)
-		gameObjects.push_back(new Orange());
+		gameObjects.push_back(new Orange(car));
 
 	float butterPositions[]{
 		14, 1,
@@ -686,7 +686,6 @@ void createScene() {
 		for (float x = -40.0f; x <= 40.0f; x += 2) {
 			Cheerio* c = new Cheerio(x, 0.1f, 3.0f * zSign, 0.4f, car);
 			gameObjects.push_back(c);
-			//cheerios.push_back(c);
 		}
 	}
 

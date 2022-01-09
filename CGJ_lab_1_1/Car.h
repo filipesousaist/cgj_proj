@@ -43,6 +43,7 @@ public:
 	void accelerateBack(bool active);
 	
 	void stop();
+	void reset();
 
 	void turnLeft(bool active);
 	void turnRight(bool active);

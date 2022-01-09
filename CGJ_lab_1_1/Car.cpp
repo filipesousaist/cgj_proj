@@ -248,6 +248,20 @@ void Car::stop() {
 	turningRight = false;
 }
 
+void Car::reset() {
+	angle = 0;
+	rollAngle = 0;
+
+	speed = 0;
+	angSpeed = 0;
+
+	accTang = accNorm = 0;
+
+	x = 0;
+	z = 0;
+
+}
+
 void Car::turnLeft(bool active) {
 	turningLeft = active;
 }

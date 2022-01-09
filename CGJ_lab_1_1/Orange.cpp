@@ -17,9 +17,10 @@ const float INITIAL_SPEED = 0.005f;
 const float SPEED_INCREASE = 0.004f;
 const float MAX_SPEED = 0.002f; //0.025f;
 
-Orange::Orange() {
+Orange::Orange(Car* car) {
 	spawnRandomly(INITIAL_SPEED);
 	addParts();
+	this->car = car;
 }
 
 void Orange::spawnRandomly(float newSpeed) {
@@ -77,4 +78,20 @@ void Orange::addParts() {
 		2.5f, 0, 0,
 		1.0f, 0.25f, 0.25f);
 	*/
+}
+
+void Orange::handleCollision() {
+	bool collision = false;
+
+	float angleRad = car->getAngle() * DEG_TO_RAD;
+
+	float collisionMinDistance = car->getColliderSize() / 2 + RADIUS;
+
+	if (abs(car->getX() - getX()) <= collisionMinDistance &&
+		abs(car->getZ() - getZ()) <= collisionMinDistance)
+		collision = true;
+
+	if (collision) {
+		car->reset();
+	}
 }
