@@ -37,6 +37,7 @@
 #include "Object.h"
 #include "Car.h"
 #include "Orange.h"
+#include "Cheerio.h"
 #include "constants.h"
 #include "Utils.h"
 
@@ -205,8 +206,6 @@ void renderScene(void) {
 	int currentTime = glutGet(GLUT_ELAPSED_TIME);
 	int deltaTime = currentTime - lastTime;
 
-	
-
 	FrameCount++;
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 	// load identity matrices
@@ -233,7 +232,7 @@ void renderScene(void) {
 		multMatrixPoint(VIEW, lightPos[i], res);   //lightPos definido em World Coord so is converted to eye space
 		stringstream ss;
 		ss.str("");
-		ss << "l_pos[" << i << "]";
+		ss << "lightPos[" << i << "]";
 		GLint lPos_uniformId = glGetUniformLocation(shader.getProgramIndex(), ss.str().c_str());
 		glUniform4fv(lPos_uniformId, 1, res);
 	}
@@ -320,8 +319,6 @@ void renderScene(void) {
 			pushMatrix(MODEL);
 		
 			translate(MODEL, obj->getX(), obj->getY(), obj->getZ());
-			float rollAxis[3];
-			obj->getRollAxis(rollAxis);
 			rotate(MODEL, obj->getAngle(), 0, 1, 0);
 			rotate(MODEL, obj->getRollAngle(), 0, 0, -1);
 			translate(MODEL, part.position[0], part.position[1], part.position[2]);
@@ -611,8 +608,8 @@ void createCheerios() {
 	int texIndices[2] {WOOD_TEX, NO_TEX};
 	bool mergeTextureWithColor = true;
 
-	MyMesh amesh = createTorus(0.2f, 0.4f, 12, 12);
-	setMeshProperties(&amesh, amb, diff, spec, emissive, shininess, texIndices, mergeTextureWithColor);
+	MyMesh amesh2 = createTorus(0.2f, 0.4f, 12, 12);
+	setMeshProperties(&amesh2, amb, diff, spec, emissive, shininess, texIndices, mergeTextureWithColor);
 	
 	float signs[]{ -1, 1 };
 
@@ -620,7 +617,7 @@ void createCheerios() {
 		float zSign = signs[sign];
 
 		for (float x = -40.0f; x <= 40.0f; x += 2) {
-			myMeshes.push_back(amesh);
+			myMeshes.push_back(amesh2);
 
 			xScales.push_back(1.0f);
 			yScales.push_back(1.0f);
@@ -639,8 +636,6 @@ void createCheerios() {
 }
 
 void createButter() {
-	MyMesh amesh;
-
 	float amb[] = { 0.6f, 0.48f, 0.0f, 1.0f };
 	float diff[] = { 0.8f, 0.8f, 0.2f, 1.0f };
 	float spec[] = { 0.2f, 0.2f, 0.2f, 1.0f };
@@ -649,7 +644,7 @@ void createButter() {
 	int* texIndices = NULL;
 	bool mergeTextureWithColor = false;
 
-	amesh = createCube();
+	MyMesh amesh = createCube();
 	setMeshProperties(&amesh, amb, diff, spec, emissive, shininess, texIndices, mergeTextureWithColor);
 
 	float positions[] {
@@ -685,8 +680,6 @@ void createButter() {
 }
 
 void createCandles() {
-	MyMesh amesh;
-
 	float amb[] = { 1.0f, 1.0f, 0.7f, 1.0f };
 	float diff[] = { 0.8f, 0.8f, 0.2f, 1.0f };
 	float spec[] = { 0.0f, 0.0f, 0.0f, 1.0f };
@@ -696,7 +689,7 @@ void createCandles() {
 	bool mergeTextureWithColor = false;
 	float height = 3.5f;
 
-	amesh = createCylinder(height, 0.75f, 20);
+	MyMesh amesh = createCylinder(height, 0.75f, 20);
 	setMeshProperties(&amesh, amb, diff, spec, emissive, shininess, texIndices, mergeTextureWithColor);
 
 	float positions[]{
@@ -718,7 +711,7 @@ void createCandles() {
 		zScales.push_back(1.0f);
 
 		xPositions.push_back(positions[2 * i]);
-		yPositions.push_back(height/2);
+		yPositions.push_back(height / 2);
 		zPositions.push_back(positions[2 * i + 1]);
 
 		angles.push_back(0);
@@ -729,6 +722,7 @@ void createCandles() {
 }
 
 void createScene() {
+	
 	//Texture Object definition
 
 	glGenTextures(4, TextureArray);
@@ -736,19 +730,31 @@ void createScene() {
 	Texture2D_Loader(TextureArray, "lightwood.tga", WOOD_TEX);
 	Texture2D_Loader(TextureArray, "checker.png", CHECKERS_TEX);
 	Texture2D_Loader(TextureArray, "orangeTex.png", ORANGE_TEX);
-
+	
 	createTable();
-	createCheerios();
+	//createCheerios();
 	createButter();
 	createCandles();
+
+	MyMesh amesh;
+
+	amesh = Cheerio::getMesh();
+	
+	float signs[]{ -1, 1 };
+
+	for (int sign = 0; sign < 2; sign++) {
+		float zSign = signs[sign];
+		for (float x = -40.0f; x <= 40.0f; x += 2) {
+			gameObjects.push_back(new Cheerio(amesh, x, 0.1f, 3.0f * zSign));
+		}
+	}
 	
 	car = new Car(&shader);
 	gameObjects.push_back(car);
-
+	
+	/*Orange::initClass();
 	for (int o = 0; o < NUM_ORANGES; o++)
-	{
-		gameObjects.push_back(new Orange());
-	}
+		gameObjects.push_back(new Orange());*/
 }
 
 void init()

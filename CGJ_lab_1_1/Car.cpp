@@ -33,7 +33,7 @@ Car::Car(VSShaderLib* shader) {
 
 	this->shader = shader;
 
-	addParts();
+	//addParts();
 }
 
 void Car::addParts() {
@@ -121,7 +121,7 @@ void Car::addSpotLights() {
 void Car::move(int deltaTime) {
 	movePosition(deltaTime);
 	moveAngle(deltaTime);
-	moveSpotLights(deltaTime);
+	moveSpotLights();
 }
 
 void Car::moveAngle(int deltaTime) {
@@ -132,7 +132,7 @@ void Car::moveAngle(int deltaTime) {
 		turnMult--;
 	
 	float speedFraction = speed / MAX_SPEED;
-	angSpeed = ANG_SPEED * speedFraction * turnMult;//*deltaTime;
+	angSpeed = ANG_SPEED * speedFraction * turnMult;
 
 	angle = modAngle(angle + angSpeed * deltaTime);
 }
@@ -155,36 +155,40 @@ void Car::movePosition(int deltaTime) {
 	speed += (ACC * accMult - accDrag) * deltaTime;
 }
 
-void Car::moveSpotLights(int deltaTime) {
+void Car::moveSpotLights() {
 	
 	float angleRad = angle * DEG_TO_RAD;
-	float spotLightDir[4]{ cos(angleRad), 0.0f, -sin(angleRad), 1.0f };
 
 	for (int i = 0; i < NUM_SPOT_LIGHTS; i++) {
 		pushMatrix(MODEL);
+
 		translate(MODEL, getX(), getY(), getZ());
 		rotate(MODEL, getAngle(), 0, 1, 0);
 		translate(MODEL, spotLightPos[i][0], spotLightPos[i][1], spotLightPos[i][2]);
 		
-		float res[4];
-		multMatrixPoint(MODEL, new float[4]{ 0.0f, 0.0f, 0.0f, 1.0f }, res);
-		multMatrixPoint(VIEW, res, res);   //lightPos definido em World Coord so is converted to eye space
+		// Spotlight position
+
+		float res_m[4];
+		float res_vm[4];
+		multMatrixPoint(MODEL, new float[4]{ 0.0f, 0.0f, 0.0f, 1.0f }, res_m);
+		multMatrixPoint(VIEW, res_m, res_vm);
+
 		stringstream ss;
 		ss.str("");
-		ss << "sl_pos[" << i << "]";
+		ss << "spotLightPos[" << i << "]";
 		GLint slPos_uniformId = glGetUniformLocation(shader->getProgramIndex(), ss.str().c_str());
-		glUniform4fv(slPos_uniformId, 1, res);
-		popMatrix(MODEL);
+		glUniform3fv(slPos_uniformId, 1, res_vm);
 
-		pushMatrix(MODEL);
-		//rotate(MODEL, getAngle(), 0, 1, 0);
-		multMatrixPoint(MODEL, new float[4]{ 1.0f, 0.0f, 0.0f, 0.0f }, res);
-		multMatrixPoint(VIEW, res, res);
+		// Spotlight end position
+
+		res_m[0] += cos(angleRad);
+		res_m[2] -= sin(angleRad);
+		multMatrixPoint(VIEW, res_m, res_vm);
 		
 		ss.str("");
-		ss << "coneDir[" << i << "]";
+		ss << "spotLightEndPos[" << i << "]";
 		GLint coneDir_uniformId = glGetUniformLocation(shader->getProgramIndex(), ss.str().c_str());
-		glUniform4fv(coneDir_uniformId, 1, new float[4]{0.0f, 0.0f, -1.0f, 0.0f});
+		glUniform3fv(coneDir_uniformId, 1, res_vm);
 
 		popMatrix(MODEL);
 	}

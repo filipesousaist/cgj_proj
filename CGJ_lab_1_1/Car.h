@@ -20,7 +20,7 @@ private:
 
 	void movePosition(int deltaTime);
 	void moveAngle(int deltaTime);
-	void moveSpotLights(int deltaTime);
+	void moveSpotLights();
 
 	void move(int deltaTime);
 	void addParts();
