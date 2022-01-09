@@ -9,6 +9,13 @@ public:
 		float sX, float sY, float sZ,
 		float angle, float rX, float rY, float rZ);
 
+	float getRadius() {
+		return radius;
+	};
+
 	string getType() { return "BUTTER"; }
+
+protected:
+	float radius;
 };
 

@@ -18,10 +18,16 @@ Cheerio::Cheerio(float x, float y, float z,
 	int texIndices[2]{ WOOD_TEX, NO_TEX };
 	bool mergeTextureWithColor = true;
 
+	radius = 0.4f;
+
+	this->x = x;
+	this->y = y;
+	this->z = z;
+
 	MyMesh amesh = createTorus(0.2f, 0.4f, 12, 12);
 	setMeshProperties(&amesh, amb, diff, spec, emissive, shininess, texIndices, mergeTextureWithColor);
 
-	addPart(amesh, x, y, z,
+	addPart(amesh, 0, 0, 0,
 		sX, sY, sZ,
 		angle, rX, rY, rZ);
 }

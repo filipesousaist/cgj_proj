@@ -19,11 +19,16 @@ Butter::Butter(float x, float y, float z,
 	float shininess = 80.0f;
 	int* texIndices = NULL;
 	bool mergeTextureWithColor = false;
+	radius = 2.0f;
+
+	this->x = x;
+	this->y = y;
+	this->z = z;
 
 	amesh = createCube();
 	setMeshProperties(&amesh, amb, diff, spec, emissive, shininess, texIndices, mergeTextureWithColor);
 
-	addPart(amesh, x, y, z,
+	addPart(amesh, 0, 0, 0,
 		sX, sY, sZ,
 		angle, rX, rY, rZ);
 }
