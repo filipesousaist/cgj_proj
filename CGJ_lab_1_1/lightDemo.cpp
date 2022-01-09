@@ -612,34 +612,6 @@ GLuint setupShaders() {
 // Model loading and OpenGL setup
 //
 
-void createTable() {
-	float amb[] = { 0.2f, 0.15f, 0.1f, 1.0f };
-	float diff[] = { 0.8f, 0.6f, 0.4f, 1.0f };
-	float spec[] = { 0.2f, 0.2f, 0.2f, 1.0f };
-	float emissive[] = { 0.0f, 0.0f, 0.0f, 1.0f };
-	float shininess = 100.0f;
-	int texIndices[] = { WOOD_TEX, CHECKERS_TEX };
-	bool mergeTextureWithColor = false;
-
-	MyMesh amesh = createCube();
-	setMeshProperties(&amesh, amb, diff, spec, emissive, shininess, texIndices, mergeTextureWithColor);
-
-	myMeshes.push_back(amesh);
-
-	xScales.push_back(100.0f);
-	yScales.push_back(0.2f);
-	zScales.push_back(100.0f);
-
-	xPositions.push_back(-50.0f);
-	yPositions.push_back(-0.2f);
-	zPositions.push_back(-50.0f);
-
-	angles.push_back(0);
-	xRotations.push_back(1.0f);
-	yRotations.push_back(0);
-	zRotations.push_back(0);
-}
-
 void createScene() {
 	//Texture Object definition
 
@@ -656,9 +628,7 @@ void createScene() {
 	gameObjects.push_back(car);
 
 	for (int o = 0; o < NUM_ORANGES; o++)
-	{
 		gameObjects.push_back(new Orange());
-	}
 
 	float butterPositions[]{
 		14, 1,
@@ -686,16 +656,14 @@ void createScene() {
 		float zSign = signs[sign];
 
 		for (float x = -40.0f; x <= 40.0f; x += 2) {
-			Cheerio* c = new Cheerio(x, 0.1f, 3.0f * zSign,
-				1.0f, 1.0f, 1.0f,
-				0, 1.0f, 0, 0);
+			Cheerio* c = new Cheerio(x, 0.1f, 3.0f * zSign, 0.4f);
 			gameObjects.push_back(c);
 			cheerios.push_back(c);
 		}
 	}
 
 
-	float candlePositions[]{
+	float candlePositions[] {
 		-35.0f, -35.0f,
 		-35.0f, 35.0f,
 		35.0f, -35.0f,
@@ -704,11 +672,9 @@ void createScene() {
 		0.0, 15.0f
 	};
 
-	for (int i = 0; i < sizeof(candlePositions) / sizeof(float); i++) {
-		gameObjects.push_back(new Candle(candlePositions[2 * i], 0, candlePositions[2 * i + 1],
-			1.0f, 1.0f, 1.0f,
-			0, 1.0f, 0, 0));
-	}
+	for (int i = 0; i < sizeof(candlePositions) / (2 * sizeof(float)); i++)
+		gameObjects.push_back(new Candle(
+			candlePositions[2 * i], 0, candlePositions[2 * i + 1], 3.5f));
 }
 
 void init()

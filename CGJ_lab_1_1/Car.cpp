@@ -113,7 +113,8 @@ void Car::addSpotLights() {
 	for (int i = 0; i < NUM_SPOT_LIGHTS; i++) {
 		float zSign = signs[i];
 		this->addPart(amesh,
-			1.0f, 0.5f, 0.25 * zSign);
+			1.0f, 0.5f, 0.25 * zSign,
+			0.5f, 1.0f, 1.0f);
 	}
 }
 
