@@ -136,4 +136,7 @@ void main() {
 		colorOut = vec4(final_color, colorOut.a);
 	}
 
+		colorOut = vec4(colorOut.rgb, mat.diffuse.a);
+
+
 }

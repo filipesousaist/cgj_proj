@@ -121,31 +121,12 @@ void Car::addSpotLights() {
 }
 
 void Car::move(int deltaTime) {
-	if (!colliding) {
-		movePosition(deltaTime);
-		moveAngle(deltaTime);
-	}
-	else {
-		moveCollision(deltaTime);
-	}
+	
+	movePosition(deltaTime);
+	moveAngle(deltaTime);
 
 	moveSpotLights();
 
-}
-void Car::moveCollision(int deltaTime) {
-	int accMult = 0;
-	if (accFront)
-		accMult++;
-	if (accBack)
-		accMult--;
-
-	float angleRad = angle * DEG_TO_RAD;
-
-	float deltaPos = speed * deltaTime + 0.5f * ACC * accMult * deltaTime * deltaTime;
-	x -= cos(angleRad) * deltaPos;
-	z += sin(angleRad) * deltaPos;
-
-	speed = -speed / 2;
 }
 
 void Car::moveAngle(int deltaTime) {
@@ -177,6 +158,9 @@ void Car::movePosition(int deltaTime) {
 
 	float accDrag = speed * 3e-4f;
 	speed += (ACC * accMult - accDrag) * deltaTime;
+
+	if (abs(x) > 50.0f || abs(z) > 50.0f)
+		reset();
 }
 
 void Car::moveSpotLights() {
@@ -268,8 +252,4 @@ void Car::turnLeft(bool active) {
 
 void Car::turnRight(bool active) {
 	turningRight = active;
-}
-
-void Car::isColliding(bool collide) {
-	colliding = collide;
 }

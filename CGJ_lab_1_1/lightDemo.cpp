@@ -39,6 +39,7 @@
 #include "Cheerio.h"
 #include "Orange.h"
 #include "Table.h"
+#include "Pawn.h"
 #include "constants.h"
 #include "Utils.h"
 
@@ -320,35 +321,10 @@ void renderObject(Object* obj) {
 	}
 }
 
-void handleCollisions() {
-	/*car->isColliding(false);
-	for (Cheerio* obj : cheerios)
-	{
-		//cout << "x: " << obj->getX() << endl;
-		// book: offline learnOpengl pag. 372
-		bool collisionX = obj->getX() + obj->getRadius() >= car->getX() && car->getX() + 1 >= obj->getX();
-		bool collisionZ = obj->getZ() + obj->getRadius() >= car->getZ() && car->getZ() + 0.5f >= obj->getZ();
-
-		if (collisionX && collisionZ)
-		{
-			cout << "x: " << car->getX() << endl;
-			cout << "z: " << car->getZ() << endl;
-			cout << "--------------------" << endl;
-			car->isColliding(true);
-		}
-		//break;
-	}
-	*/
-	for (Object* obj: gameObjects)
-		obj->handleCollision();
-}
-
 void renderText() {
 	//Render text (bitmap fonts) in screen coordinates. So use ortoghonal projection with viewport coordinates.
 	glDisable(GL_DEPTH_TEST);
-	//The glyph contains background colors and non-transparent for the actual character pixels. So we use the blending
-	glEnable(GL_BLEND);
-	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+	
 	int m_viewport[4];
 	glGetIntegerv(GL_VIEWPORT, m_viewport);
 
@@ -382,6 +358,9 @@ void renderScene(void) {
 	FrameCount++;
 
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+	//The glyph contains background colors and non-transparent for the actual character pixels. So we use the blending
+	glEnable(GL_BLEND);
+	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 	// load identity matrices
 	loadIdentity(VIEW);
 	loadIdentity(MODEL);
@@ -399,7 +378,8 @@ void renderScene(void) {
 	for (Object* obj : gameObjects)
 		renderObject(obj);
 
-	handleCollisions();
+	for (Object* obj : gameObjects)
+		obj->handleCollision();
 
 	if (showText)
 		renderText();
@@ -702,6 +682,8 @@ void createScene() {
 	for (int i = 0; i < sizeof(candlePositions) / (2 * sizeof(float)); i++)
 		gameObjects.push_back(new Candle(
 			candlePositions[2 * i], 0, candlePositions[2 * i + 1], 3.5f));
+
+	gameObjects.push_back(new Pawn());
 }
 
 void init()

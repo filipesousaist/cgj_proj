@@ -19,7 +19,6 @@ private:
 	bool accBack = false;
 	bool turningLeft = false;
 	bool turningRight = false;
-	bool colliding = false;
 
 	bool canMoveBack = true;
 	bool canMoveFront = true;
@@ -27,7 +26,6 @@ private:
 	void movePosition(int deltaTime);
 	void moveAngle(int deltaTime);
 	void moveSpotLights();
-	void moveCollision(int deltaTime);
 
 	void move(int deltaTime);
 	void addParts(float sizeX, float sizeZ);
@@ -58,7 +56,4 @@ public:
 	float getColliderSize() {
 		return colliderSize;
 	}
-
-
-	void isColliding(bool collide);
 };

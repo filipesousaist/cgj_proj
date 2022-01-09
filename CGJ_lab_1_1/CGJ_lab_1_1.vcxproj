@@ -169,6 +169,7 @@
     <ClCompile Include="MathUtils.cpp" />
     <ClCompile Include="Object.cpp" />
     <ClCompile Include="Orange.cpp" />
+    <ClCompile Include="Pawn.cpp" />
     <ClCompile Include="Table.cpp" />
     <ClCompile Include="Texture_Loader.cpp" />
     <ClCompile Include="Utils.cpp" />
@@ -188,6 +189,7 @@
     <ClInclude Include="MathUtils.h" />
     <ClInclude Include="Object.h" />
     <ClInclude Include="Orange.h" />
+    <ClInclude Include="Pawn.h" />
     <ClInclude Include="src\resource.h" />
     <ClInclude Include="src\Texture_Loader.h" />
     <ClInclude Include="src\Utils.h" />
