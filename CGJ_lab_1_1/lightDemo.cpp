@@ -8,7 +8,7 @@
 // The code comes with no warranties, use it at your own risk.
 // You may use it, or parts of it, wherever you want.
 // 
-// Author: João Madeiras Pereira
+// Author: Joï¿½o Madeiras Pereira
 //
 
 #include <math.h>
@@ -19,12 +19,10 @@
 // include GLEW to access OpenGL 3.3 functions
 #include <GL/glew.h>
 
-
 // GLUT is the toolkit to interface with the OS
 #include <GL/freeglut.h>
 
 #include <IL/il.h>
-
 
 // Use Very Simple Libs
 #include "VSShaderlib.h"
@@ -35,11 +33,12 @@
 #include "avtFreeType.h"
 
 #include "Object.h"
-#include "Car.h"
-#include "Orange.h"
 #include "Butter.h"
-#include "Cheerio.h"
 #include "Candle.h"
+#include "Car.h"
+#include "Cheerio.h"
+#include "Orange.h"
+#include "Table.h"
 #include "constants.h"
 #include "Utils.h"
 
@@ -119,9 +118,9 @@ float r = 10.0f;
 long myTime, timebase = 0, frame = 0;
 char s[32];
 
-float lightPos[4]{ 1.0f, 1000.0f, 1.0f, 0.0f };
+float directionalLightPos[4] { 1.0f, 1000.0f, 1.0f, 0.0f };
 
-float pointLightPos[NUM_LIGHTS][4] {
+float pointLightPos[NUM_POINT_LIGHTS][4] {
 	{-35.0f, 4.0f, -35.0f, 1.0f},
 	{-35.0f, 4.0f, 35.0f, 1.0f},
 	{35.0f, 4.0f, -35.0f, 1.0f},
@@ -213,17 +212,7 @@ void updateCarCamera() {
 // Render stufff
 //
 
-void renderScene(void) {
-	GLint loc;
-
-	int currentTime = glutGet(GLUT_ELAPSED_TIME);
-	int deltaTime = currentTime - lastTime;
-
-	FrameCount++;
-	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-	// load identity matrices
-	loadIdentity(VIEW);
-	loadIdentity(MODEL);
+void setCameraLookAt() {
 	// set the camera using a function similar to gluLookAt
 	switch (cameraProjection) {
 	case Camera::ORTHOGONAL:
@@ -233,72 +222,72 @@ void renderScene(void) {
 	case Camera::CAR:
 		updateCarCamera(); break;
 	}
-	
-	// use our shader
-	glUseProgram(shader.getProgramIndex());
+}
+
+void renderLights() {
+	GLint loc;
 
 	loc = glGetUniformLocation(shader.getProgramIndex(), "day");
 	glUniform1i(loc, day);
 
 	loc = glGetUniformLocation(shader.getProgramIndex(), "candles");
 	glUniform1i(loc, candles);
-	
+
 	loc = glGetUniformLocation(shader.getProgramIndex(), "headlights");
 	glUniform1i(loc, headlights);
-	
+
 	loc = glGetUniformLocation(shader.getProgramIndex(), "fog");
 	glUniform1i(loc, fog);
 
-	//send the light position in eye coordinates
-	//glUniform4fv(lPos_uniformId, 1, lightPos); //efeito capacete do mineiro, ou seja lighPos foi definido em eye coord 
-
 	float res[4];
-	multMatrixPoint(VIEW, lightPos, res);
-	GLint lPos_uniformId = glGetUniformLocation(shader.getProgramIndex(), "l_pos");
-	glUniform4fv(lPos_uniformId, 1, res);
+	multMatrixPoint(VIEW, directionalLightPos, res);
+	GLint lPos_uniformId = glGetUniformLocation(shader.getProgramIndex(), "directionalLightPos");
+	glUniform3fv(lPos_uniformId, 1, res);
 
-	for (int i = 0; i < NUM_LIGHTS; i++) {
+	for (int i = 0; i < NUM_POINT_LIGHTS; i++) {
 		float res[4];
 		multMatrixPoint(VIEW, pointLightPos[i], res);   //lightPos definido em World Coord so is converted to eye space
 		stringstream ss;
 		ss.str("");
-		ss << "pl_pos[" << i << "]";
+		ss << "pointLightPos[" << i << "]";
 		GLint plPos_uniformId = glGetUniformLocation(shader.getProgramIndex(), ss.str().c_str());
-		glUniform4fv(plPos_uniformId, 1, res);
+		glUniform3fv(plPos_uniformId, 1, res);
 	}
+}
 
-	for (Object* obj : gameObjects)
-	{
-		obj->update(deltaTime);
-	}
+void renderObject(Object* obj) {
+	vector<Object::Part>* parts = obj->getParts();
 
-	int objId = 0; //id of the object mesh - to be used as index of mesh: Mymeshes[objID] means the current mesh
-
-	for (int i = 0; i < myMeshes.size(); ++i) {
+	for (const Object::Part& part : *parts) {
+		GLint loc;
 		// textures
-		for (int t = 0; t < myMeshes[objId].mat.texCount; t++) {
+		for (int t = 0; t < part.mesh.mat.texCount; t++) {
 			glActiveTexture(GL_TEXTURES[t]);
-			glBindTexture(GL_TEXTURE_2D, TextureArray[myMeshes[objId].mat.texIndices[t]]);
+			glBindTexture(GL_TEXTURE_2D, TextureArray[part.mesh.mat.texIndices[t]]);
 			glUniform1i(tex_loc[t], t);
 		}
 		loc = glGetUniformLocation(shader.getProgramIndex(), "mergeTextureWithColor");
-		glUniform1i(loc, myMeshes[objId].mat.mergeTextureWithColor);
+		glUniform1i(loc, part.mesh.mat.mergeTextureWithColor);
 
 		// send the material
 		loc = glGetUniformLocation(shader.getProgramIndex(), "mat.ambient");
-		glUniform4fv(loc, 1, myMeshes[objId].mat.ambient);
+		glUniform4fv(loc, 1, part.mesh.mat.ambient);
 		loc = glGetUniformLocation(shader.getProgramIndex(), "mat.diffuse");
-		glUniform4fv(loc, 1, myMeshes[objId].mat.diffuse);
+		glUniform4fv(loc, 1, part.mesh.mat.diffuse);
 		loc = glGetUniformLocation(shader.getProgramIndex(), "mat.specular");
-		glUniform4fv(loc, 1, myMeshes[objId].mat.specular);
+		glUniform4fv(loc, 1, part.mesh.mat.specular);
 		loc = glGetUniformLocation(shader.getProgramIndex(), "mat.shininess");
-		glUniform1f(loc, myMeshes[objId].mat.shininess);
+		glUniform1f(loc, part.mesh.mat.shininess);
 		loc = glGetUniformLocation(shader.getProgramIndex(), "mat.texCount");
-		glUniform1i(loc, myMeshes[objId].mat.texCount);
+		glUniform1i(loc, part.mesh.mat.texCount);
 		pushMatrix(MODEL);
-		translate(MODEL, xPositions[i], yPositions[i], zPositions[i]);
-		rotate(MODEL, angles[i], xRotations[i], yRotations[i], zRotations[i]);
-		scale(MODEL, xScales[i], yScales[i], zScales[i]);
+
+		translate(MODEL, obj->getX(), obj->getY(), obj->getZ());
+		rotate(MODEL, obj->getAngle(), 0, 1, 0);
+		rotate(MODEL, obj->getRollAngle(), 0, 0, -1);
+		translate(MODEL, part.position[0], part.position[1], part.position[2]);
+		rotate(MODEL, part.angle, part.rotationAxis[0], part.rotationAxis[1], part.rotationAxis[2]);
+		scale(MODEL, part.scale[0], part.scale[1], part.scale[2]);
 
 		// send matrices to OGL
 		computeDerivedMatrix(PROJ_VIEW_MODEL);
@@ -308,105 +297,27 @@ void renderScene(void) {
 		glUniformMatrix3fv(normal_uniformId, 1, GL_FALSE, mNormal3x3);
 
 		// Render mesh
-		glBindVertexArray(myMeshes[objId].vao);
-			
+		glBindVertexArray(part.mesh.vao);
+
 		if (!shader.isProgramValid()) {
 			std::printf("Program Not Valid!\n");
-			exit(1);	
+			exit(1);
 		}
-		glDrawElements(myMeshes[objId].type, myMeshes[objId].numIndexes, GL_UNSIGNED_INT, 0);
+		glDrawElements(part.mesh.type, part.mesh.numIndexes, GL_UNSIGNED_INT, 0);
 		glBindVertexArray(0);
 
 		popMatrix(MODEL);
-		objId ++;
 	}
+}
 
-	for (Object* obj: gameObjects)
-	{
-		vector<Object::Part>* parts = obj->getParts();
-
-		for (const Object::Part& part : *parts) {
-			// textures
-			for (int t = 0; t < part.mesh.mat.texCount; t++) {
-				glActiveTexture(GL_TEXTURES[t]);
-				glBindTexture(GL_TEXTURE_2D, TextureArray[part.mesh.mat.texIndices[t]]);
-				glUniform1i(tex_loc[t], t);
-			}
-			loc = glGetUniformLocation(shader.getProgramIndex(), "mergeTextureWithColor");
-			glUniform1i(loc, part.mesh.mat.mergeTextureWithColor);
-
-			// send the material
-			loc = glGetUniformLocation(shader.getProgramIndex(), "mat.ambient");
-			glUniform4fv(loc, 1, part.mesh.mat.ambient);
-			loc = glGetUniformLocation(shader.getProgramIndex(), "mat.diffuse");
-			glUniform4fv(loc, 1, part.mesh.mat.diffuse);
-			loc = glGetUniformLocation(shader.getProgramIndex(), "mat.specular");
-			glUniform4fv(loc, 1, part.mesh.mat.specular);
-			loc = glGetUniformLocation(shader.getProgramIndex(), "mat.shininess");
-			glUniform1f(loc, part.mesh.mat.shininess);
-			loc = glGetUniformLocation(shader.getProgramIndex(), "mat.texCount");
-			glUniform1i(loc, part.mesh.mat.texCount);
-			pushMatrix(MODEL);
-		
-			translate(MODEL, obj->getX(), obj->getY(), obj->getZ());
-			rotate(MODEL, obj->getAngle(), 0, 1, 0);
-			rotate(MODEL, obj->getRollAngle(), 0, 0, -1);
-			translate(MODEL, part.position[0], part.position[1], part.position[2]);
-			rotate(MODEL, part.angle, part.rotationAxis[0], part.rotationAxis[1], part.rotationAxis[2]);
-			scale(MODEL, part.scale[0], part.scale[1], part.scale[2]);
-
-			// send matrices to OGL
-			computeDerivedMatrix(PROJ_VIEW_MODEL);
-			glUniformMatrix4fv(vm_uniformId, 1, GL_FALSE, mCompMatrix[VIEW_MODEL]);
-			glUniformMatrix4fv(pvm_uniformId, 1, GL_FALSE, mCompMatrix[PROJ_VIEW_MODEL]);
-			computeNormalMatrix3x3();
-			glUniformMatrix3fv(normal_uniformId, 1, GL_FALSE, mNormal3x3);
-
-			// Render mesh
-			glBindVertexArray(part.mesh.vao);
-
-			if (!shader.isProgramValid()) {
-				std::printf("Program Not Valid!\n");
-				exit(1);
-			}
-			glDrawElements(part.mesh.type, part.mesh.numIndexes, GL_UNSIGNED_INT, 0);
-			glBindVertexArray(0);
-
-			popMatrix(MODEL);
-		}
-	}
-
-	//Render text (bitmap fonts) in screen coordinates. So use ortoghonal projection with viewport coordinates.
-	glDisable(GL_DEPTH_TEST);
-	//the glyph contains background colors and non-transparent for the actual character pixels. So we use the blending
-	glEnable(GL_BLEND);  
-	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-	int m_viewport[4];
-	glGetIntegerv(GL_VIEWPORT, m_viewport);
-
-	//viewer at origin looking down at  negative z direction
-	pushMatrix(MODEL);
-	loadIdentity(MODEL);
-	pushMatrix(PROJECTION);
-	loadIdentity(PROJECTION);
-	pushMatrix(VIEW);
-	loadIdentity(VIEW);
-	ortho(m_viewport[0], m_viewport[0] + m_viewport[2] - 1, m_viewport[1], m_viewport[1] + m_viewport[3] - 1, -1, 1);
-	RenderText(shaderText, "X " + std::to_string(car->getX()) + " m", 25.0f, 125.0f, 0.5f, 0.5f, 0.5f, 0.8f);
-	RenderText(shaderText, "Z " + std::to_string(car->getZ()) + " m", 25.0f, 100.0f, 0.5f, 0.5f, 0.5f, 0.8f);
-	RenderText(shaderText, "Angle " + std::to_string(car->getAngle()) + " deg", 25.0f, 75.0f, 0.5f, 0.5f, 0.8f, 0.2f);
-	RenderText(shaderText, "Speed " + std::to_string(car->getSpeed()), 25.0f, 50.0f, 0.5f, 0.5f, 0.2f, 0.8f);
-	RenderText(shaderText, "Angular speed " + std::to_string(car->getAngularSpeed()), 25.0f, 25.0f, 0.5f, 0.5f, 0.8f, 0.2f);
-	RenderText(shaderText, "cherioX " + std::to_string(cheerios[0]->getX()) + " m", 200.0f, 125.0f, 0.5f, 0.5f, 0.5f, 0.8f);
-	RenderText(shaderText, "cherioZ " + std::to_string(cheerios[0]->getZ()) + " m", 200.0f, 100.0f, 0.5f, 0.5f, 0.5f, 0.8f);
-
+void handleCollisions() {
 	car->isColliding(false);
 	for (Cheerio* obj : cheerios)
 	{
 		//cout << "x: " << obj->getX() << endl;
 		// book: offline learnOpengl pag. 372
 		bool collisionX = obj->getX() + obj->getRadius() >= car->getX() && car->getX() + 1 >= obj->getX();
-		bool collisionZ = obj->getZ() + obj->getRadius() >= car->getZ() && car->getZ() + 0.5f	 >= obj->getZ();
+		bool collisionZ = obj->getZ() + obj->getRadius() >= car->getZ() && car->getZ() + 0.5f >= obj->getZ();
 
 		if (collisionX && collisionZ)
 		{
@@ -422,7 +333,7 @@ void renderScene(void) {
 		//cout << "x: " << obj->getX() << endl;
 
 		bool collisionX = obj->getX() + obj->getRadius() >= car->getX() && car->getX() + 1 >= obj->getX();
-		bool collisionZ = obj->getZ() + obj->getRadius()/2 >= car->getZ() && car->getZ() + 0.5f >= obj->getZ();
+		bool collisionZ = obj->getZ() + obj->getRadius() / 2 >= car->getZ() && car->getZ() + 0.5f >= obj->getZ();
 
 		if (collisionX && collisionZ)
 		{
@@ -433,14 +344,70 @@ void renderScene(void) {
 		}
 		//break;
 	}
+}
+
+void renderText() {
+	//Render text (bitmap fonts) in screen coordinates. So use ortoghonal projection with viewport coordinates.
+	glDisable(GL_DEPTH_TEST);
+	//The glyph contains background colors and non-transparent for the actual character pixels. So we use the blending
+	glEnable(GL_BLEND);
+	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+	int m_viewport[4];
+	glGetIntegerv(GL_VIEWPORT, m_viewport);
+
+	pushMatrix(MODEL);
+	pushMatrix(VIEW);
+	pushMatrix(PROJECTION);
 	
-	//RenderText(shaderText, "CGJ Light and Text Rendering Demo", 440.0f, 570.0f, 0.5f, 0.3, 0.7f, 0.9f);
-	popMatrix(PROJECTION);
-	popMatrix(VIEW);
+	loadIdentity(MODEL);
+	loadIdentity(VIEW);
+	loadIdentity(PROJECTION);
+
+	ortho(m_viewport[0], m_viewport[0] + m_viewport[2] - 1, m_viewport[1], m_viewport[1] + m_viewport[3] - 1, -1, 1);
+	RenderText(shaderText, "X " + std::to_string(car->getX()) + " m", 25.0f, 125.0f, 0.5f, 0.5f, 0.5f, 0.8f);
+	RenderText(shaderText, "Z " + std::to_string(car->getZ()) + " m", 25.0f, 100.0f, 0.5f, 0.5f, 0.5f, 0.8f);
+	RenderText(shaderText, "Angle " + std::to_string(car->getAngle()) + " deg", 25.0f, 75.0f, 0.5f, 0.5f, 0.8f, 0.2f);
+	RenderText(shaderText, "Speed " + std::to_string(car->getSpeed()), 25.0f, 50.0f, 0.5f, 0.5f, 0.2f, 0.8f);
+	RenderText(shaderText, "Angular speed " + std::to_string(car->getAngularSpeed()), 25.0f, 25.0f, 0.5f, 0.5f, 0.8f, 0.2f);
+	RenderText(shaderText, "cherioX " + std::to_string(cheerios[0]->getX()) + " m", 200.0f, 125.0f, 0.5f, 0.5f, 0.5f, 0.8f);
+	RenderText(shaderText, "cherioZ " + std::to_string(cheerios[0]->getZ()) + " m", 200.0f, 100.0f, 0.5f, 0.5f, 0.5f, 0.8f);
+	
 	popMatrix(MODEL);
+	popMatrix(VIEW);
+	popMatrix(PROJECTION);
+
 	glEnable(GL_DEPTH_TEST);
 	glDisable(GL_BLEND);
+}
 
+void renderScene(void) {
+	int currentTime = glutGet(GLUT_ELAPSED_TIME);
+	int deltaTime = currentTime - lastTime;
+
+	FrameCount++;
+
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+	// load identity matrices
+	loadIdentity(VIEW);
+	loadIdentity(MODEL);
+	
+	setCameraLookAt();
+	
+	// use our shader
+	glUseProgram(shader.getProgramIndex());
+
+	renderLights();
+
+	for (Object* obj : gameObjects)
+		obj->update(deltaTime);
+
+	for (Object* obj : gameObjects)
+		renderObject(obj);
+
+	handleCollisions();
+
+	renderText();
+	
 	glutSwapBuffers();
 
 	lastTime = currentTime;
@@ -677,21 +644,16 @@ void createScene() {
 	//Texture Object definition
 
 	glGenTextures(4, TextureArray);
-	Texture2D_Loader(TextureArray, "stone.tga", STONE_TEX);
-	Texture2D_Loader(TextureArray, "lightwood.tga", WOOD_TEX);
-	Texture2D_Loader(TextureArray, "checker.png", CHECKERS_TEX);
-	Texture2D_Loader(TextureArray, "orangeTex.png", ORANGE_TEX);
+	Texture2D_Loader(TextureArray, "img/stone.tga", STONE_TEX);
+	Texture2D_Loader(TextureArray, "img/lightwood.tga", WOOD_TEX);
+	Texture2D_Loader(TextureArray, "img/checker.png", CHECKERS_TEX);
+	Texture2D_Loader(TextureArray, "img/orangeTex.png", ORANGE_TEX);
 
-	createTable();
+	//createTable();
+	gameObjects.push_back(new Table());
 	
 	car = new Car(&shader);
 	gameObjects.push_back(car);
-
-	/*Cheerio* c = new Cheerio(3.0f, 0, 3.0f,
-		1.0f, 1.0f, 1.0f,
-		0, 1.0f, 0, 0);
-	gameObjects.push_back(c);
-	cheerios.push_back(c);*/
 
 	for (int o = 0; o < NUM_ORANGES; o++)
 	{

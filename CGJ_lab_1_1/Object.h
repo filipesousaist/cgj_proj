@@ -55,9 +55,7 @@ protected:
 	void addPart(MyMesh mesh, float x, float y, float z);
 	void addPart(MyMesh mesh);
 
-	virtual void addParts() = 0;
 	virtual void move(int deltaTime) {};
-	virtual string getType() = 0;
 
 private:
 	vector<Part>* parts;

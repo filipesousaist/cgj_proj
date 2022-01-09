@@ -13,140 +13,167 @@
       <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
     </Filter>
-    <Filter Include="Source Files\img">
-      <UniqueIdentifier>{68bd7f68-ffa6-4482-88ca-c95d73eb2e70}</UniqueIdentifier>
+    <Filter Include="Resource Files\Images">
+      <UniqueIdentifier>{c129e72a-817e-4e78-bce6-21a118aadada}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Resource Files\Shaders">
+      <UniqueIdentifier>{c1469c17-ddc3-4352-93f3-cc1a7b8d4078}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\AVT">
+      <UniqueIdentifier>{63c9e9f0-e9e9-4db3-96c2-51f0206a9d81}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\AVT">
+      <UniqueIdentifier>{900b8b46-97bc-4e27-a44b-f7eef8d1ae3b}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\Objects">
+      <UniqueIdentifier>{ba166245-5acb-47fb-9842-283fcc10f506}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\Objects">
+      <UniqueIdentifier>{560c45df-2cde-40cd-8e01-29b116246470}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\Utils">
+      <UniqueIdentifier>{dc715706-32df-41b8-b5e1-f19fadcd02e1}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\Utils">
+      <UniqueIdentifier>{6ce82744-096c-4d0f-931a-94a854c71509}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="AVTmathLib.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="basic_geometry.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="vsShaderLib.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="Texture_Loader.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="avtFreeType.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="Object.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="lightDemo.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="Car.cpp">
-      <Filter>Source Files</Filter>
+    <ClCompile Include="avtFreeType.cpp">
+      <Filter>Source Files\AVT</Filter>
     </ClCompile>
-    <ClCompile Include="Orange.cpp">
-      <Filter>Source Files</Filter>
+    <ClCompile Include="AVTmathLib.cpp">
+      <Filter>Source Files\AVT</Filter>
     </ClCompile>
-    <ClCompile Include="MathUtils.cpp">
-      <Filter>Source Files</Filter>
+    <ClCompile Include="basic_geometry.cpp">
+      <Filter>Source Files\AVT</Filter>
     </ClCompile>
-    <ClCompile Include="Utils.cpp">
-      <Filter>Source Files</Filter>
+    <ClCompile Include="vsShaderLib.cpp">
+      <Filter>Source Files\AVT</Filter>
+    </ClCompile>
+    <ClCompile Include="Texture_Loader.cpp">
+      <Filter>Source Files\AVT</Filter>
     </ClCompile>
     <ClCompile Include="Butter.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="Cheerio.cpp">
-      <Filter>Source Files</Filter>
+      <Filter>Source Files\Objects</Filter>
     </ClCompile>
     <ClCompile Include="Candle.cpp">
-      <Filter>Source Files</Filter>
+      <Filter>Source Files\Objects</Filter>
+    </ClCompile>
+    <ClCompile Include="Car.cpp">
+      <Filter>Source Files\Objects</Filter>
+    </ClCompile>
+    <ClCompile Include="Cheerio.cpp">
+      <Filter>Source Files\Objects</Filter>
+    </ClCompile>
+    <ClCompile Include="Object.cpp">
+      <Filter>Source Files\Objects</Filter>
+    </ClCompile>
+    <ClCompile Include="Orange.cpp">
+      <Filter>Source Files\Objects</Filter>
+    </ClCompile>
+    <ClCompile Include="Utils.cpp">
+      <Filter>Source Files\Utils</Filter>
+    </ClCompile>
+    <ClCompile Include="MathUtils.cpp">
+      <Filter>Source Files\Utils</Filter>
+    </ClCompile>
+    <ClCompile Include="Table.cpp">
+      <Filter>Source Files\Objects</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="AVTmathLib.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="cube.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="VertexAttrDef.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="vsShaderLib.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="Texture_Loader.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="geometry.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="ft2build.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="avtFreeType.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="resource.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="Object.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="Car.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="constants.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Orange.h">
-      <Filter>Header Files</Filter>
+    <ClInclude Include="avtFreeType.h">
+      <Filter>Header Files\AVT</Filter>
     </ClInclude>
-    <ClInclude Include="MathUtils.h">
-      <Filter>Header Files</Filter>
+    <ClInclude Include="AVTmathLib.h">
+      <Filter>Header Files\AVT</Filter>
     </ClInclude>
-    <ClInclude Include="Utils.h">
-      <Filter>Header Files</Filter>
+    <ClInclude Include="ft2build.h">
+      <Filter>Header Files\AVT</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Texture_Loader.h">
+      <Filter>Header Files\AVT</Filter>
+    </ClInclude>
+    <ClInclude Include="src\vsShaderLib.h">
+      <Filter>Header Files\AVT</Filter>
+    </ClInclude>
+    <ClInclude Include="src\VertexAttrDef.h">
+      <Filter>Header Files\AVT</Filter>
+    </ClInclude>
+    <ClInclude Include="src\resource.h">
+      <Filter>Header Files\AVT</Filter>
+    </ClInclude>
+    <ClInclude Include="geometry.h">
+      <Filter>Header Files\AVT</Filter>
+    </ClInclude>
+    <ClInclude Include="cube.h">
+      <Filter>Header Files\AVT</Filter>
+    </ClInclude>
+    <ClInclude Include="Object.h">
+      <Filter>Header Files\Objects</Filter>
     </ClInclude>
     <ClInclude Include="Butter.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="Cheerio.h">
-      <Filter>Header Files</Filter>
+      <Filter>Header Files\Objects</Filter>
     </ClInclude>
     <ClInclude Include="Candle.h">
-      <Filter>Header Files</Filter>
+      <Filter>Header Files\Objects</Filter>
+    </ClInclude>
+    <ClInclude Include="Car.h">
+      <Filter>Header Files\Objects</Filter>
+    </ClInclude>
+    <ClInclude Include="Cheerio.h">
+      <Filter>Header Files\Objects</Filter>
+    </ClInclude>
+    <ClInclude Include="Orange.h">
+      <Filter>Header Files\Objects</Filter>
+    </ClInclude>
+    <ClInclude Include="MathUtils.h">
+      <Filter>Header Files\Utils</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Utils.h">
+      <Filter>Header Files\Utils</Filter>
+    </ClInclude>
+    <ClInclude Include="Table.h">
+      <Filter>Header Files\Objects</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
+    <None Include="Dependencies.exe" />
+    <None Include="shaders\text.vert">
+      <Filter>Resource Files\Shaders</Filter>
+    </None>
     <None Include="shaders\pointlight.frag">
-      <Filter>Resource Files</Filter>
+      <Filter>Resource Files\Shaders</Filter>
     </None>
     <None Include="shaders\pointlight.vert">
-      <Filter>Resource Files</Filter>
+      <Filter>Resource Files\Shaders</Filter>
     </None>
-    <None Include="Dependencies.exe" />
     <None Include="shaders\text.frag">
-      <Filter>Resource Files</Filter>
-    </None>
-    <None Include="shaders\text.vert">
-      <Filter>Resource Files</Filter>
+      <Filter>Resource Files\Shaders</Filter>
     </None>
   </ItemGroup>
   <ItemGroup>
-    <Image Include="checker.png">
-      <Filter>Source Files\img</Filter>
+    <Image Include="img\orangeTex.png">
+      <Filter>Resource Files\Images</Filter>
     </Image>
-    <Image Include="lightwood.tga">
-      <Filter>Source Files\img</Filter>
+    <Image Include="img\checker.png">
+      <Filter>Resource Files\Images</Filter>
     </Image>
-    <Image Include="orangeTex.png">
-      <Filter>Source Files\img</Filter>
+    <Image Include="img\lightwood.tga">
+      <Filter>Resource Files\Images</Filter>
     </Image>
-    <Image Include="stone.tga">
-      <Filter>Source Files\img</Filter>
+    <Image Include="img\tablecloth.png">
+      <Filter>Resource Files\Images</Filter>
     </Image>
-    <Image Include="tablecloth.png">
-      <Filter>Source Files\img</Filter>
+    <Image Include="img\stone.tga">
+      <Filter>Resource Files\Images</Filter>
     </Image>
   </ItemGroup>
 </Project>

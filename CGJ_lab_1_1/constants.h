@@ -19,7 +19,7 @@ const int
 
 const int GL_TEXTURES[] = { GL_TEXTURE0, GL_TEXTURE1 };
 
-const int NUM_LIGHTS = 6;
+const int NUM_POINT_LIGHTS = 6;
 
 const int NUM_SPOT_LIGHTS = 2;
 

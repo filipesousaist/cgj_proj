@@ -31,5 +31,3 @@ Cheerio::Cheerio(float x, float y, float z,
 		sX, sY, sZ,
 		angle, rX, rY, rZ);
 }
-
-void Cheerio::addParts() {}

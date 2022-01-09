@@ -14,7 +14,5 @@ private:
 	void addParts();
 public:
 	Orange::Orange();
-
-	string getType() { return "ORANGE"; }
 };
 

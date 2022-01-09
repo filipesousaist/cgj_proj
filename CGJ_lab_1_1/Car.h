@@ -21,7 +21,7 @@ private:
 
 	void movePosition(int deltaTime);
 	void moveAngle(int deltaTime);
-	void moveSpotLights(int deltaTime);
+	void moveSpotLights();
 	void moveCollision(int deltaTime);
 
 	void move(int deltaTime);
@@ -48,6 +48,4 @@ public:
 	}
 
 	void isColliding(bool collide);
-
-	string getType() { return "CAR"; }
 };

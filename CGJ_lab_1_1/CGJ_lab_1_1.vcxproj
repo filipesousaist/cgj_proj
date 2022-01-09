@@ -169,6 +169,7 @@
     <ClCompile Include="MathUtils.cpp" />
     <ClCompile Include="Object.cpp" />
     <ClCompile Include="Orange.cpp" />
+    <ClCompile Include="Table.cpp" />
     <ClCompile Include="Texture_Loader.cpp" />
     <ClCompile Include="Utils.cpp" />
     <ClCompile Include="vsShaderLib.cpp" />
@@ -187,11 +188,12 @@
     <ClInclude Include="MathUtils.h" />
     <ClInclude Include="Object.h" />
     <ClInclude Include="Orange.h" />
-    <ClInclude Include="resource.h" />
-    <ClInclude Include="Texture_Loader.h" />
-    <ClInclude Include="Utils.h" />
-    <ClInclude Include="VertexAttrDef.h" />
-    <ClInclude Include="vsShaderLib.h" />
+    <ClInclude Include="src\resource.h" />
+    <ClInclude Include="src\Texture_Loader.h" />
+    <ClInclude Include="src\Utils.h" />
+    <ClInclude Include="src\VertexAttrDef.h" />
+    <ClInclude Include="src\vsShaderLib.h" />
+    <ClInclude Include="Table.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="Dependencies.exe" />
@@ -201,11 +203,11 @@
     <None Include="shaders\text.vert" />
   </ItemGroup>
   <ItemGroup>
-    <Image Include="checker.png" />
-    <Image Include="lightwood.tga" />
-    <Image Include="orangeTex.png" />
-    <Image Include="stone.tga" />
-    <Image Include="tablecloth.png" />
+    <Image Include="img\checker.png" />
+    <Image Include="img\lightwood.tga" />
+    <Image Include="img\orangeTex.png" />
+    <Image Include="img\stone.tga" />
+    <Image Include="img\tablecloth.png" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
