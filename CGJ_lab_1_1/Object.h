@@ -40,6 +40,8 @@ public:
 	}
 	void getRollAxis(float* rollAxis); // By reference
 
+	virtual void handleCollision() {};
+
 protected:
 	float x;
 	float y;

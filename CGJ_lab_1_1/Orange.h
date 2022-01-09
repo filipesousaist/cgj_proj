@@ -1,5 +1,8 @@
 #pragma once
 #include "Object.h"
+
+#include <string>
+
 class Orange : public Object
 {
 private:
@@ -12,7 +15,10 @@ private:
 	void move(int deltaTime);
 
 	void addParts();
+
 public:
 	Orange::Orange();
+	
+	string collides();
 };
 

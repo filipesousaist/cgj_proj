@@ -7,6 +7,8 @@ class Car : public Object
 private:
 	VSShaderLib* shader;
 
+	float colliderSize;
+
 	float speed;
 	float angSpeed;
 
@@ -19,23 +21,28 @@ private:
 	bool turningRight = false;
 	bool colliding = false;
 
+	bool canMoveBack = true;
+	bool canMoveFront = true;
+
 	void movePosition(int deltaTime);
 	void moveAngle(int deltaTime);
 	void moveSpotLights();
 	void moveCollision(int deltaTime);
 
 	void move(int deltaTime);
-	void addParts();
+	void addParts(float sizeX, float sizeZ);
 
-	void addBody();
+	void addBody(float sizeX, float sizeZ);
 	void addWheels();
 	void addSpotLights();
 	
 public:
-	Car::Car(VSShaderLib* shader);
+	Car::Car(VSShaderLib* shader, float sizeX, float sizeZ);
 
 	void accelerate(bool active);
 	void accelerateBack(bool active);
+	
+	void stop();
 
 	void turnLeft(bool active);
 	void turnRight(bool active);
@@ -46,6 +53,11 @@ public:
 	float getAngularSpeed() {
 		return angSpeed;
 	}
+
+	float getColliderSize() {
+		return colliderSize;
+	}
+
 
 	void isColliding(bool collide);
 };

@@ -1,21 +1,16 @@
 #pragma once
 #include "Object.h"
+#include "Car.h"
+
 class Butter : public Object
 {
 private:
-	void addParts();
+	float sizeX;
+	float sizeZ;
+	Car* car;
 public:
-	Butter::Butter(float x, float y, float z,
-		float sX, float sY, float sZ,
-		float angle, float rX, float rY, float rZ);
+	Butter::Butter(float x, float y, float z, float sizeX, float sizeZ, Car* car);
 
-	float getRadius() {
-		return radius;
-	};
-
-	string getType() { return "BUTTER"; }
-
-protected:
-	float radius;
+	void handleCollision();
 };
 

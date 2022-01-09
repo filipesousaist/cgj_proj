@@ -81,7 +81,6 @@ vector<Object*> gameObjects;
 Car* car;
 
 vector<Cheerio*> cheerios;
-vector<Butter*> butters;
 
 Camera cameraProjection;
 
@@ -129,10 +128,21 @@ float pointLightPos[NUM_POINT_LIGHTS][4] {
 	{0.0f, 4.0f, 15.0f, 1.0f}
 };
 
+
 bool day = true;
+bool dayKey = false;
+
 bool candles = true;
+bool candlesKey = false;
+
 bool headlights = true;
+bool headlightsKey = false;
+
 bool fog = false;
+bool fogKey = false;
+
+bool showText = false;
+bool showTextKey = false;
 
 void timer(int value)
 {
@@ -311,7 +321,7 @@ void renderObject(Object* obj) {
 }
 
 void handleCollisions() {
-	car->isColliding(false);
+	/*car->isColliding(false);
 	for (Cheerio* obj : cheerios)
 	{
 		//cout << "x: " << obj->getX() << endl;
@@ -328,22 +338,9 @@ void handleCollisions() {
 		}
 		//break;
 	}
-	for (Butter* obj : butters)
-	{
-		//cout << "x: " << obj->getX() << endl;
-
-		bool collisionX = obj->getX() + obj->getRadius() >= car->getX() && car->getX() + 1 >= obj->getX();
-		bool collisionZ = obj->getZ() + obj->getRadius() / 2 >= car->getZ() && car->getZ() + 0.5f >= obj->getZ();
-
-		if (collisionX && collisionZ)
-		{
-			cout << "x: " << car->getX() << endl;
-			cout << "z: " << car->getZ() << endl;
-			cout << "--------------------" << endl;
-			car->isColliding(true);
-		}
-		//break;
-	}
+	*/
+	for (Object* obj: gameObjects)
+		obj->handleCollision();
 }
 
 void renderText() {
@@ -369,8 +366,6 @@ void renderText() {
 	RenderText(shaderText, "Angle " + std::to_string(car->getAngle()) + " deg", 25.0f, 75.0f, 0.5f, 0.5f, 0.8f, 0.2f);
 	RenderText(shaderText, "Speed " + std::to_string(car->getSpeed()), 25.0f, 50.0f, 0.5f, 0.5f, 0.2f, 0.8f);
 	RenderText(shaderText, "Angular speed " + std::to_string(car->getAngularSpeed()), 25.0f, 25.0f, 0.5f, 0.5f, 0.8f, 0.2f);
-	RenderText(shaderText, "cherioX " + std::to_string(cheerios[0]->getX()) + " m", 200.0f, 125.0f, 0.5f, 0.5f, 0.5f, 0.8f);
-	RenderText(shaderText, "cherioZ " + std::to_string(cheerios[0]->getZ()) + " m", 200.0f, 100.0f, 0.5f, 0.5f, 0.5f, 0.8f);
 	
 	popMatrix(MODEL);
 	popMatrix(VIEW);
@@ -406,7 +401,8 @@ void renderScene(void) {
 
 	handleCollisions();
 
-	renderText();
+	if (showText)
+		renderText();
 	
 	glutSwapBuffers();
 
@@ -447,13 +443,35 @@ void processKeys(unsigned char key, int xx, int yy)
 	case 'd':
 		car->turnRight(true); break;
 	case 'o': // night mode
-		day = !day; break;
+		if (!dayKey) {
+			dayKey = true;
+			day = !day;
+		}
+		break;
 	case 'p': // candles
-		candles = !candles; break;
+		if (!candlesKey) {
+			candlesKey = true;
+			candles = !candles;
+		}
+		break;
 	case 'h': // headlights
-		headlights = !headlights; break;
+		if (!headlightsKey) {
+			headlightsKey = true;
+			headlights = !headlights;
+		}
+		break;
 	case 'f': // fog
-		fog = !fog; break;
+		if (!fogKey) {
+			fogKey = true;
+			fog = !fog;
+		}
+		break;
+	case 't': // text
+		if (!showTextKey) {
+			showTextKey = true;
+			showText = !showText;
+		}
+		break;
 	}
 }
 
@@ -468,6 +486,17 @@ void processKeysUp(unsigned char key, int xx, int yy)
 		car->turnLeft(false); break;
 	case 'd':
 		car->turnRight(false); break;
+	case 'o':
+		dayKey = false; break;
+	case 'p':
+		candlesKey = false; break;
+	case 'h':
+		headlightsKey = false; break;
+	case 'f':
+		fogKey = false; break;
+	case 't':
+		showTextKey = false; break;
+
 	}
 }
 
@@ -624,7 +653,7 @@ void createScene() {
 	//createTable();
 	gameObjects.push_back(new Table());
 	
-	car = new Car(&shader);
+	car = new Car(&shader, 2.0f, 1.0f);
 	gameObjects.push_back(car);
 
 	for (int o = 0; o < NUM_ORANGES; o++)
@@ -636,18 +665,17 @@ void createScene() {
 		28, 1
 	};
 
-	float butterRotations[]{
-		0,
-		45,
-		90
+	float butterSizes[]{
+		2.0f, 1.0f,
+		2.0f, 1.0f,
+		1.0f, 2.0f
 	};
-	for (int i = 0; i < sizeof(butterRotations) / sizeof(float); i++)
+	for (int i = 0; i < sizeof(butterPositions) / (sizeof(float) * 2); i++)
 	{
-		Butter* b = new Butter(-1.0f + butterPositions[2 * i], 0, -0.5f + butterPositions[2 * i + 1],
-			2.0f, 0.5f, 1.0f,
-			butterRotations[i], 0, 1.0f, 0);
+		Butter* b = new Butter(
+			butterPositions[2 * i], 0, butterPositions[2 * i + 1],
+			butterSizes[2 * i], butterSizes[2 * i + 1], car);
 		gameObjects.push_back(b);
-		butters.push_back(b);
 	}
 
 	float signs[]{ -1, 1 };
@@ -656,9 +684,9 @@ void createScene() {
 		float zSign = signs[sign];
 
 		for (float x = -40.0f; x <= 40.0f; x += 2) {
-			Cheerio* c = new Cheerio(x, 0.1f, 3.0f * zSign, 0.4f);
+			Cheerio* c = new Cheerio(x, 0.1f, 3.0f * zSign, 0.4f, car);
 			gameObjects.push_back(c);
-			cheerios.push_back(c);
+			//cheerios.push_back(c);
 		}
 	}
 

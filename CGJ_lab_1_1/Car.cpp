@@ -22,7 +22,7 @@ float spotLightPos[NUM_SPOT_LIGHTS][4]{
 	{1.0f, 0.5f, 0.25f, 1.0f}
 };
 
-Car::Car(VSShaderLib* shader) {
+Car::Car(VSShaderLib* shader, float sizeX, float sizeZ) {
 	angle = 0;
 	rollAngle = 0;
 
@@ -31,18 +31,20 @@ Car::Car(VSShaderLib* shader) {
 
 	accTang = accNorm = 0;
 
+	colliderSize = (sizeX + sizeZ) / 2;
+
 	this->shader = shader;
 
-	addParts();
+	addParts(sizeX, sizeZ);
 }
 
-void Car::addParts() {
-	addBody();
+void Car::addParts(float sizeX, float sizeZ) {
+	addBody(sizeX, sizeZ);
 	addWheels();
 	addSpotLights();
 }
 
-void Car::addBody() {
+void Car::addBody(float sizeX, float sizeZ) {
 	float amb[] = { 0.0f, 0.6f, 0.0f, 1.0f };
 	float diff[] = { 0.2f, 0.8f, 0.2f, 1.0f };
 	float spec[] = { 0.5f, 0.5f, 0.5f, 1.0f };
@@ -56,12 +58,12 @@ void Car::addBody() {
 
 	addPart(amesh,
 		-1.0f, 0.25f, -0.5f,
-		2.0f, 0.5f, 1.0f);
+		sizeX, 0.5f, sizeZ);
 
 	// Cockpit
 	addPart(amesh,
 		-0.5f,  0.65f, -0.3f,
-		0.8f, 0.4f, 0.6f);
+		0.4f * sizeX, 0.4f, 0.6f * sizeZ);
 }
 
 void Car::addWheels() {
@@ -223,11 +225,27 @@ void Car::moveSpotLights() {
 }
 
 void Car::accelerate(bool active) {
-	accFront = active;
+	if (canMoveFront)
+		accFront = active;
+	canMoveBack = true;
 }
 
 void Car::accelerateBack(bool active) {
-	accBack = active;
+	if (canMoveBack)
+		accBack = active;
+	canMoveFront = true;
+}
+
+void Car::stop() {
+	if (speed > 0)
+		canMoveFront = false;
+	else if (speed < 0)
+		canMoveBack = false;
+	speed = 0;
+	accFront = false;
+	accBack = false;
+	turningLeft = false;
+	turningRight = false;
 }
 
 void Car::turnLeft(bool active) {

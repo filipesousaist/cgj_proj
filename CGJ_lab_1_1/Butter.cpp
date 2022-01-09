@@ -1,14 +1,15 @@
 #pragma once
 
 #include "Butter.h"
-#include <Utils.h>
+#include "Utils.h"
+#include "Car.h"
+
+#include "AVTmathLib.h"
 
 using namespace std;
 using namespace Utils;
 
-Butter::Butter(float x, float y, float z,
-	float sX, float sY, float sZ,
-	float angle, float rX, float rY, float rZ) {
+Butter::Butter(float x, float y, float z, float sizeX, float sizeZ, Car* car) {
 	
 	MyMesh amesh;
 
@@ -19,18 +20,44 @@ Butter::Butter(float x, float y, float z,
 	float shininess = 80.0f;
 	int* texIndices = NULL;
 	bool mergeTextureWithColor = false;
-	radius = 2.0f;
 
 	this->x = x;
 	this->y = y;
 	this->z = z;
+	this->sizeX = sizeX;
+	this->sizeZ = sizeZ;
+	this->car = car;
 
 	amesh = createCube();
 	setMeshProperties(&amesh, amb, diff, spec, emissive, shininess, texIndices, mergeTextureWithColor);
 
-	addPart(amesh, 0, 0, 0,
-		sX, sY, sZ,
-		angle, rX, rY, rZ);
+	addPart(amesh, -sizeX / 2, 0, -sizeZ / 2,
+		sizeX, 0.5f, sizeZ);
 }
 
-void Butter::addParts() {}
+void Butter::handleCollision() {
+	float mass = 0.05f;
+	bool collision = false;
+
+	float angleRad = car->getAngle() * DEG_TO_RAD;
+
+	float carToButter[3]{ x - car->getX(), 0, z - car->getZ() };
+	float carDirection[3]{ cos(angleRad), 0, -sin(angleRad) };
+	float dotProductResult = dotProduct(carToButter, carDirection);
+
+
+	if (abs(car->getX() - getX()) <= (car->getColliderSize() + sizeX) / 2 &&
+		abs(car->getZ() - getZ()) <= (car->getColliderSize() + sizeZ) / 2 &&
+		dotProductResult * car->getSpeed() > 0)
+		collision = true;
+
+	if (collision) {
+		float deltaPos = abs(car->getSpeed()) / mass;
+		float deltaPosDir[3]{ carToButter[0] + cos(angleRad), 0, carToButter[2] - sin(angleRad) };
+		normalize(deltaPosDir);
+		x += deltaPos * deltaPosDir[0];
+		z += deltaPos * deltaPosDir[2];
+
+		car->stop();
+	}
+}

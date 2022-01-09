@@ -84,7 +84,7 @@ void main() {
 		float SPOT_LINEAR_ATT = 0;
 		float SPOT_QUADRATIC_ATT = 0.01;
 
-		float SPOT_COS_CUTOFF = cos(radians(5));
+		float SPOT_COS_CUTOFF = cos(radians(30));
 
 		for (int i = 0; i < NUM_SPOT_LIGHTS; i++) {
 			vec3 posToSpotLight = spotLightPos[i] - DataIn.pos;
