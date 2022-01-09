@@ -119,9 +119,31 @@ void Car::addSpotLights() {
 }
 
 void Car::move(int deltaTime) {
-	movePosition(deltaTime);
-	moveAngle(deltaTime);
-	moveSpotLights();
+	if (!colliding) {
+		movePosition(deltaTime);
+		moveAngle(deltaTime);
+		moveSpotLights(deltaTime);
+	}
+	else {
+		moveCollision(deltaTime);
+	}
+
+}
+void Car::moveCollision(int deltaTime) {
+	int accMult = 0;
+	if (accFront)
+		accMult++;
+	if (accBack)
+		accMult--;
+
+	float angleRad = angle * DEG_TO_RAD;
+
+	float deltaPos = speed * deltaTime + 0.5f * ACC * accMult * deltaTime * deltaTime;
+	x -= cos(angleRad) * deltaPos;
+	z += sin(angleRad) * deltaPos;
+
+	float accDrag = speed * 3e-4f;
+	speed = -speed/2;
 }
 
 void Car::moveAngle(int deltaTime) {
@@ -159,6 +181,12 @@ void Car::moveSpotLights() {
 	
 	float angleRad = angle * DEG_TO_RAD;
 
+	float dirX = cos(angleRad);
+	float dirZ = sin(angleRad);
+
+	float perpX = cos(angleRad + 3.14f / 2);
+	float perpZ = sin(angleRad + 3.14f / 2);
+
 	for (int i = 0; i < NUM_SPOT_LIGHTS; i++) {
 		pushMatrix(MODEL);
 
@@ -181,14 +209,15 @@ void Car::moveSpotLights() {
 
 		// Spotlight end position
 
-		res_m[0] += cos(angleRad);
-		res_m[2] -= sin(angleRad);
-		multMatrixPoint(VIEW, res_m, res_vm);
+		pushMatrix(MODEL);
+		//rotate(MODEL, getAngle(), 0, 1, 0);
+		multMatrixPoint(MODEL, new float[4]{ getX() + 1.0f, getY(), getZ(), 1.0f }, res);
+		multMatrixPoint(VIEW, res, res);
 		
 		ss.str("");
 		ss << "spotLightEndPos[" << i << "]";
 		GLint coneDir_uniformId = glGetUniformLocation(shader->getProgramIndex(), ss.str().c_str());
-		glUniform3fv(coneDir_uniformId, 1, res_vm);
+		glUniform4fv(coneDir_uniformId, 1, res);
 
 		popMatrix(MODEL);
 	}
@@ -208,4 +237,8 @@ void Car::turnLeft(bool active) {
 
 void Car::turnRight(bool active) {
 	turningRight = active;
+}
+
+void Car::isColliding(bool collide) {
+	colliding = collide;
 }

@@ -37,7 +37,9 @@
 #include "Object.h"
 #include "Car.h"
 #include "Orange.h"
+#include "Butter.h"
 #include "Cheerio.h"
+#include "Candle.h"
 #include "constants.h"
 #include "Utils.h"
 
@@ -79,6 +81,9 @@ vector<Object*> gameObjects;
 
 Car* car;
 
+vector<Cheerio*> cheerios;
+vector<Butter*> butters;
+
 Camera cameraProjection;
 
 float camRatio;
@@ -113,7 +118,10 @@ float r = 10.0f;
 // Frame counting and FPS computation
 long myTime, timebase = 0, frame = 0;
 char s[32];
-float lightPos[NUM_LIGHTS][4] {
+
+float lightPos[4]{ 1.0f, 1000.0f, 1.0f, 0.0f };
+
+float pointLightPos[NUM_LIGHTS][4] {
 	{-35.0f, 4.0f, -35.0f, 1.0f},
 	{-35.0f, 4.0f, 35.0f, 1.0f},
 	{35.0f, 4.0f, -35.0f, 1.0f},
@@ -121,6 +129,11 @@ float lightPos[NUM_LIGHTS][4] {
 	{0.0f, 4.0f, -15.0f, 1.0f},
 	{0.0f, 4.0f, 15.0f, 1.0f}
 };
+
+bool day = true;
+bool candles = true;
+bool headlights = true;
+bool fog = false;
 
 void timer(int value)
 {
@@ -224,17 +237,34 @@ void renderScene(void) {
 	// use our shader
 	glUseProgram(shader.getProgramIndex());
 
+	loc = glGetUniformLocation(shader.getProgramIndex(), "day");
+	glUniform1i(loc, day);
+
+	loc = glGetUniformLocation(shader.getProgramIndex(), "candles");
+	glUniform1i(loc, candles);
+	
+	loc = glGetUniformLocation(shader.getProgramIndex(), "headlights");
+	glUniform1i(loc, headlights);
+	
+	loc = glGetUniformLocation(shader.getProgramIndex(), "fog");
+	glUniform1i(loc, fog);
+
 	//send the light position in eye coordinates
 	//glUniform4fv(lPos_uniformId, 1, lightPos); //efeito capacete do mineiro, ou seja lighPos foi definido em eye coord 
 
+	float res[4];
+	multMatrixPoint(VIEW, lightPos, res);
+	GLint lPos_uniformId = glGetUniformLocation(shader.getProgramIndex(), "l_pos");
+	glUniform4fv(lPos_uniformId, 1, res);
+
 	for (int i = 0; i < NUM_LIGHTS; i++) {
 		float res[4];
-		multMatrixPoint(VIEW, lightPos[i], res);   //lightPos definido em World Coord so is converted to eye space
+		multMatrixPoint(VIEW, pointLightPos[i], res);   //lightPos definido em World Coord so is converted to eye space
 		stringstream ss;
 		ss.str("");
-		ss << "lightPos[" << i << "]";
-		GLint lPos_uniformId = glGetUniformLocation(shader.getProgramIndex(), ss.str().c_str());
-		glUniform4fv(lPos_uniformId, 1, res);
+		ss << "pl_pos[" << i << "]";
+		GLint plPos_uniformId = glGetUniformLocation(shader.getProgramIndex(), ss.str().c_str());
+		glUniform4fv(plPos_uniformId, 1, res);
 	}
 
 	for (Object* obj : gameObjects)
@@ -367,6 +397,42 @@ void renderScene(void) {
 	RenderText(shaderText, "Angle " + std::to_string(car->getAngle()) + " deg", 25.0f, 75.0f, 0.5f, 0.5f, 0.8f, 0.2f);
 	RenderText(shaderText, "Speed " + std::to_string(car->getSpeed()), 25.0f, 50.0f, 0.5f, 0.5f, 0.2f, 0.8f);
 	RenderText(shaderText, "Angular speed " + std::to_string(car->getAngularSpeed()), 25.0f, 25.0f, 0.5f, 0.5f, 0.8f, 0.2f);
+	RenderText(shaderText, "cherioX " + std::to_string(cheerios[0]->getX()) + " m", 200.0f, 125.0f, 0.5f, 0.5f, 0.5f, 0.8f);
+	RenderText(shaderText, "cherioZ " + std::to_string(cheerios[0]->getZ()) + " m", 200.0f, 100.0f, 0.5f, 0.5f, 0.5f, 0.8f);
+
+	car->isColliding(false);
+	for (Cheerio* obj : cheerios)
+	{
+		//cout << "x: " << obj->getX() << endl;
+		// book: offline learnOpengl pag. 372
+		bool collisionX = obj->getX() + obj->getRadius() >= car->getX() && car->getX() + 1 >= obj->getX();
+		bool collisionZ = obj->getZ() + obj->getRadius() >= car->getZ() && car->getZ() + 0.5f	 >= obj->getZ();
+
+		if (collisionX && collisionZ)
+		{
+			cout << "x: " << car->getX() << endl;
+			cout << "z: " << car->getZ() << endl;
+			cout << "--------------------" << endl;
+			car->isColliding(true);
+		}
+		//break;
+	}
+	for (Butter* obj : butters)
+	{
+		//cout << "x: " << obj->getX() << endl;
+
+		bool collisionX = obj->getX() + obj->getRadius() >= car->getX() && car->getX() + 1 >= obj->getX();
+		bool collisionZ = obj->getZ() + obj->getRadius()/2 >= car->getZ() && car->getZ() + 0.5f >= obj->getZ();
+
+		if (collisionX && collisionZ)
+		{
+			cout << "x: " << car->getX() << endl;
+			cout << "z: " << car->getZ() << endl;
+			cout << "--------------------" << endl;
+			car->isColliding(true);
+		}
+		//break;
+	}
 	
 	//RenderText(shaderText, "CGJ Light and Text Rendering Demo", 440.0f, 570.0f, 0.5f, 0.3, 0.7f, 0.9f);
 	popMatrix(PROJECTION);
@@ -413,6 +479,14 @@ void processKeys(unsigned char key, int xx, int yy)
 		car->turnLeft(true); break;
 	case 'd':
 		car->turnRight(true); break;
+	case 'o': // night mode
+		day = !day; break;
+	case 'p': // candles
+		candles = !candles; break;
+	case 'h': // headlights
+		headlights = !headlights; break;
+	case 'f': // fog
+		fog = !fog; break;
 	}
 }
 
@@ -599,100 +673,67 @@ void createTable() {
 	zRotations.push_back(0);
 }
 
-void createCheerios() {
-	float amb[] = { 0.6f, 0.48f, 0.0f, 1.0f };
-	float diff[] = { 0.6f, 0.4f, 0.1f, 1.0f };
-	float spec[] = { 0.15f, 0.15f, 0.15f, 1.0f };
-	float emissive[] = { 0.0f, 0.0f, 0.0f, 1.0f };
-	float shininess = 60.0f;
-	int texIndices[2] {WOOD_TEX, NO_TEX};
-	bool mergeTextureWithColor = true;
+void createScene() {
+	//Texture Object definition
 
-	MyMesh amesh2 = createTorus(0.2f, 0.4f, 12, 12);
-	setMeshProperties(&amesh2, amb, diff, spec, emissive, shininess, texIndices, mergeTextureWithColor);
+	glGenTextures(4, TextureArray);
+	Texture2D_Loader(TextureArray, "stone.tga", STONE_TEX);
+	Texture2D_Loader(TextureArray, "lightwood.tga", WOOD_TEX);
+	Texture2D_Loader(TextureArray, "checker.png", CHECKERS_TEX);
+	Texture2D_Loader(TextureArray, "orangeTex.png", ORANGE_TEX);
+
+	createTable();
 	
+	car = new Car(&shader);
+	gameObjects.push_back(car);
+
+	/*Cheerio* c = new Cheerio(3.0f, 0, 3.0f,
+		1.0f, 1.0f, 1.0f,
+		0, 1.0f, 0, 0);
+	gameObjects.push_back(c);
+	cheerios.push_back(c);*/
+
+	for (int o = 0; o < NUM_ORANGES; o++)
+	{
+		gameObjects.push_back(new Orange());
+	}
+
+	float butterPositions[]{
+		14, 1,
+		19, -0.75f,
+		28, 1
+	};
+
+	float butterRotations[]{
+		0,
+		45,
+		90
+	};
+	for (int i = 0; i < sizeof(butterRotations) / sizeof(float); i++)
+	{
+		Butter* b = new Butter(-1.0f + butterPositions[2 * i], 0, -0.5f + butterPositions[2 * i + 1],
+			2.0f, 0.5f, 1.0f,
+			butterRotations[i], 0, 1.0f, 0);
+		gameObjects.push_back(b);
+		butters.push_back(b);
+	}
+
 	float signs[]{ -1, 1 };
 
 	for (int sign = 0; sign < 2; sign++) {
 		float zSign = signs[sign];
 
 		for (float x = -40.0f; x <= 40.0f; x += 2) {
-			myMeshes.push_back(amesh2);
-
-			xScales.push_back(1.0f);
-			yScales.push_back(1.0f);
-			zScales.push_back(1.0f);
-
-			xPositions.push_back(x);
-			yPositions.push_back(0.1f);
-			zPositions.push_back(3.0f * zSign);
-
-			angles.push_back(0);
-			xRotations.push_back(1.0f);
-			yRotations.push_back(0);
-			zRotations.push_back(0);
+			Cheerio* c = new Cheerio(x, 0.1f, 3.0f * zSign,
+				1.0f, 1.0f, 1.0f,
+				0, 1.0f, 0, 0);
+			gameObjects.push_back(c);
+			cheerios.push_back(c);
 		}
 	}
-}
 
-void createButter() {
-	float amb[] = { 0.6f, 0.48f, 0.0f, 1.0f };
-	float diff[] = { 0.8f, 0.8f, 0.2f, 1.0f };
-	float spec[] = { 0.2f, 0.2f, 0.2f, 1.0f };
-	float emissive[] = { 0.0f, 0.0f, 0.0f, 1.0f };
-	float shininess = 80.0f;
-	int* texIndices = NULL;
-	bool mergeTextureWithColor = false;
 
-	MyMesh amesh = createCube();
-	setMeshProperties(&amesh, amb, diff, spec, emissive, shininess, texIndices, mergeTextureWithColor);
-
-	float positions[] {
-		14, 1,
-		19, -0.75f,
-		28, 1
-	};
-
-	float rotations[] {
-		0,
-		45,
-		90
-	};
-
-	int numButters = sizeof(rotations) / sizeof(float);
-
-	for (int i = 0; i < numButters; i++) {
-		myMeshes.push_back(amesh);
-
-		xScales.push_back(2.0f);
-		yScales.push_back(0.5f);
-		zScales.push_back(1.0f);
-
-		xPositions.push_back(-1.0f + positions[2 * i]);
-		yPositions.push_back(0);
-		zPositions.push_back(-0.5f + positions[2 * i + 1]);
-
-		angles.push_back(rotations[i]);
-		xRotations.push_back(0);
-		yRotations.push_back(1.0f);
-		zRotations.push_back(0);
-	}
-}
-
-void createCandles() {
-	float amb[] = { 1.0f, 1.0f, 0.7f, 1.0f };
-	float diff[] = { 0.8f, 0.8f, 0.2f, 1.0f };
-	float spec[] = { 0.0f, 0.0f, 0.0f, 1.0f };
-	float emissive[] = { 0.0f, 0.0f, 0.0f, 1.0f };
-	float shininess = 80.0f;
-	int* texIndices = NULL;
-	bool mergeTextureWithColor = false;
-	float height = 3.5f;
-
-	MyMesh amesh = createCylinder(height, 0.75f, 20);
-	setMeshProperties(&amesh, amb, diff, spec, emissive, shininess, texIndices, mergeTextureWithColor);
-
-	float positions[]{
+	float candlePositions[]{
 		-35.0f, -35.0f,
 		-35.0f, 35.0f,
 		35.0f, -35.0f,
@@ -701,60 +742,11 @@ void createCandles() {
 		0.0, 15.0f
 	};
 
-	int numCandles = sizeof(positions) / sizeof(float);
-
-	for (int i = 0; i < numCandles; i++) {
-		myMeshes.push_back(amesh);
-
-		xScales.push_back(1.0f);
-		yScales.push_back(1.0f);
-		zScales.push_back(1.0f);
-
-		xPositions.push_back(positions[2 * i]);
-		yPositions.push_back(height / 2);
-		zPositions.push_back(positions[2 * i + 1]);
-
-		angles.push_back(0);
-		xRotations.push_back(1.0f);
-		yRotations.push_back(0);
-		zRotations.push_back(0);
+	for (int i = 0; i < sizeof(candlePositions) / sizeof(float); i++) {
+		gameObjects.push_back(new Candle(candlePositions[2 * i], 0, candlePositions[2 * i + 1],
+			1.0f, 1.0f, 1.0f,
+			0, 1.0f, 0, 0));
 	}
-}
-
-void createScene() {
-	
-	//Texture Object definition
-
-	glGenTextures(4, TextureArray);
-	Texture2D_Loader(TextureArray, "stone.tga", STONE_TEX);
-	Texture2D_Loader(TextureArray, "lightwood.tga", WOOD_TEX);
-	Texture2D_Loader(TextureArray, "checker.png", CHECKERS_TEX);
-	Texture2D_Loader(TextureArray, "orangeTex.png", ORANGE_TEX);
-	
-	createTable();
-	//createCheerios();
-	createButter();
-	createCandles();
-
-	MyMesh amesh;
-
-	amesh = Cheerio::getMesh();
-	
-	float signs[]{ -1, 1 };
-
-	for (int sign = 0; sign < 2; sign++) {
-		float zSign = signs[sign];
-		for (float x = -40.0f; x <= 40.0f; x += 2) {
-			gameObjects.push_back(new Cheerio(amesh, x, 0.1f, 3.0f * zSign));
-		}
-	}
-	
-	car = new Car(&shader);
-	gameObjects.push_back(car);
-	
-	/*Orange::initClass();
-	for (int o = 0; o < NUM_ORANGES; o++)
-		gameObjects.push_back(new Orange());*/
 }
 
 void init()

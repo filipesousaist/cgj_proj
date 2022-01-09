@@ -9,6 +9,14 @@ uniform sampler2D texmap1;
 
 uniform bool mergeTextureWithColor;
 
+uniform bool day;
+
+uniform bool candles;
+
+uniform bool headlights;
+
+uniform bool fog;
+
 struct Materials {
 	vec4 diffuse;
 	vec4 ambient;
@@ -28,7 +36,12 @@ in Data {
 	vec3 pos;
 	vec3 normal;
 	vec3 eye;
-	vec2 texCoord;
+	vec3 directLightDir;
+	vec3 pointLightDir[NUM_POINT_LIGHTS];
+	vec3 spotLightDir[NUM_SPOT_LIGHTS];
+	vec4 coneDir[NUM_SPOT_LIGHTS];
+	vec2 tex_coord;
+
 } DataIn;
 
 out vec4 colorOut;
@@ -44,47 +57,63 @@ void main() {
 
 	vec3 n = normalize(DataIn.normal);
 	vec3 e = normalize(DataIn.eye);
+	vec3 dl = normalize(DataIn.directLightDir);
+	vec3 pl[NUM_POINT_LIGHTS];
+	vec3 sl[NUM_SPOT_LIGHTS];
 
-	for (int i = 0; i < NUM_POINT_LIGHTS; i ++) {
-		vec3 l = normalize(lightPos[i].xyz - DataIn.pos);
-		
-		float diffuse = max(dot(n,l), 0.0);
+	if (day){
+		float diffuse = max(dot(n,dl), 0.0);
 	
 		if (diffuse > 0.0) {
-			totalDiffuse += diffuse;
-			vec3 h = normalize(l + e);
+			totalDiffuse += diffuse * vec4(0.5, 0.5, 0.5, 1.0);
+			vec3 h = normalize(dl + e);
 			float intSpecular = max(dot(h,n), 0.0);
 			totalSpecular += pow(intSpecular, mat.shininess);
 		}
 	}
+	if (candles) {
+		for (int i = 0; i < NUM_POINT_LIGHTS; i ++) {
+			pl[i] = normalize(DataIn.pointLightDir[i]);
+
+			float diffuse = max(dot(n,pl[i]), 0.0);
 	
-	float SPOT_INTENSITY = 10;
-	float SPOT_LINEAR_ATT = 0;
-	float SPOT_QUADRATIC_ATT = 0.01;
-
-	for (int i = 0; i < NUM_SPOT_LIGHTS; i++) {
-		float dist = length(spotLightPos[i].xyz - DataIn.pos);
-		vec3 sl = normalize(spotLightPos[i].xyz - DataIn.pos);
-		vec3 cd = normalize(spotLightPos[i].xyz - spotLightEndPos[i].xyz);
-
-		float spotCos = dot(sl, cd);
-		//n = cd;
-		if(spotCos > spotCosCutOff)  {	//inside cone?
-			float spot_intensity = SPOT_INTENSITY / (1 + SPOT_LINEAR_ATT * dist + SPOT_QUADRATIC_ATT * dist * dist);
-			float diffuse = max(dot(n,sl), 0.0) * spot_intensity;
-
 			if (diffuse > 0.0) {
-				totalDiffuse += diffuse;
-				vec3 h = normalize(sl + e);
+				totalDiffuse += diffuse * vec4(0.5, 0.5, 0.5, 1.0);
+				vec3 h = normalize(pl[i] + e);
 				float intSpecular = max(dot(h,n), 0.0);
-				totalSpecular += pow(intSpecular, mat.shininess) * spot_intensity;
+				totalSpecular += pow(intSpecular, mat.shininess);
 			}
 		}
 	}
 
+	if (headlights){
+		float att = 0.0;
+		float spotExp = 5.0;
+
+		for (int i = 0; i < NUM_SPOT_LIGHTS; i++) {
+			sl[i] = normalize(DataIn.spotLightDir[i]);
+
+			vec3 sd = normalize(vec3(-DataIn.coneDir[i]));
+			float spotCos = dot(sl[i], sd);
+
+			if(spotCos > spotCosCutOff)  {	//inside cone?
+				att = pow(spotCos, spotExp);
+				float diffuse = max(dot(n,sl[i]), 0.0) * att;
+
+				if (diffuse > 0.0) {
+					totalDiffuse += diffuse;
+					vec3 h = normalize(sl[i] + e);
+					float intSpecular = max(dot(h,n), 0.0);
+					totalSpecular += pow(intSpecular, mat.shininess) * att;
+				}
+			}
+		}
+	}
+	
+
 	vec4 finalDiffuse = mat.diffuse * totalDiffuse;
 	vec4 finalSpecular = mat.specular * totalSpecular;
-	
+
 	if (mat.texCount == 0)
 	{
 		colorOut = max(finalDiffuse + finalSpecular, mat.ambient);
@@ -104,9 +133,12 @@ void main() {
 		colorOut = max(totalDiffuse * texel * texel1 + finalSpecular, 0.07 * texel * texel1);
 	}
 
-	float dist = length(DataIn.pos);
-	float fogAmount = exp(-dist * 0.0/*2*/ );
-	vec3 fogColor = vec3(0.5, 0.6, 0.7);
-	vec3 final_color = mix(fogColor, colorOut.rgb, fogAmount);
-	colorOut = vec4(final_color, colorOut.a);
+	if (fog) {
+		float dist = length(pos.xyz);
+		float fogAmount = exp(-dist * 0.2f);
+		vec3 fogColor = vec3(0.5, 0.6, 0.7);
+		vec3 final_color = mix(fogColor, colorOut.rgb, fogAmount);
+		colorOut = vec4(final_color, colorOut.a);
+	}
+
 }

@@ -161,6 +161,8 @@
     <ClCompile Include="avtFreeType.cpp" />
     <ClCompile Include="AVTmathLib.cpp" />
     <ClCompile Include="basic_geometry.cpp" />
+    <ClCompile Include="Butter.cpp" />
+    <ClCompile Include="Candle.cpp" />
     <ClCompile Include="Car.cpp" />
     <ClCompile Include="Cheerio.cpp" />
     <ClCompile Include="lightDemo.cpp" />
@@ -174,6 +176,8 @@
   <ItemGroup>
     <ClInclude Include="avtFreeType.h" />
     <ClInclude Include="AVTmathLib.h" />
+    <ClInclude Include="Butter.h" />
+    <ClInclude Include="Candle.h" />
     <ClInclude Include="Car.h" />
     <ClInclude Include="Cheerio.h" />
     <ClInclude Include="cube.h" />

@@ -17,10 +17,12 @@ private:
 	bool accBack = false;
 	bool turningLeft = false;
 	bool turningRight = false;
+	bool colliding = false;
 
 	void movePosition(int deltaTime);
 	void moveAngle(int deltaTime);
-	void moveSpotLights();
+	void moveSpotLights(int deltaTime);
+	void moveCollision(int deltaTime);
 
 	void move(int deltaTime);
 	void addParts();
@@ -44,6 +46,8 @@ public:
 	float getAngularSpeed() {
 		return angSpeed;
 	}
+
+	void isColliding(bool collide);
 
 	string getType() { return "CAR"; }
 };
