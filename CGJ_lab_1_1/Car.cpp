@@ -167,12 +167,6 @@ void Car::moveSpotLights() {
 	
 	float angleRad = angle * DEG_TO_RAD;
 
-	float dirX = cos(angleRad);
-	float dirZ = sin(angleRad);
-
-	float perpX = cos(angleRad + 3.14f / 2);
-	float perpZ = sin(angleRad + 3.14f / 2);
-
 	for (int i = 0; i < NUM_SPOT_LIGHTS; i++) {
 		pushMatrix(MODEL);
 

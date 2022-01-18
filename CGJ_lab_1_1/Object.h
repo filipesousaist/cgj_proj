@@ -40,6 +40,19 @@ public:
 	}
 	void getRollAxis(float* rollAxis); // By reference
 
+	float getScaleX() {
+		return scaleX;
+	}
+
+	float getScaleY() {
+		return scaleY;
+	}
+
+	float getScaleZ() {
+		return scaleZ;
+	}
+
+
 	virtual void handleCollision() {};
 
 protected:
@@ -48,6 +61,9 @@ protected:
 	float z;
 	float angle;
 	float rollAngle;
+	float scaleX;
+	float scaleY;
+	float scaleZ;
 
 	void addPart(MyMesh mesh, float x, float y, float z, 
 		float sX, float sY, float sZ, 
@@ -63,4 +79,3 @@ private:
 	vector<Part>* parts;
 	
 };
-

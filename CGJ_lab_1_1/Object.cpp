@@ -5,6 +5,7 @@
 Object::Object() {
 	x = y = z = 0;
 	angle = rollAngle = 0;
+	scaleX = scaleY = scaleZ = 1.0f;
 	parts = new vector<Part>;
 }
 
@@ -50,3 +51,4 @@ void Object::getRollAxis(float* rollAxis) {
 	float up[] { 0, 1, 0 };
 	crossProduct(direction, up, rollAxis);
 }
+

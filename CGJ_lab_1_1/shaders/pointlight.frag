@@ -55,7 +55,7 @@ void main() {
 		float diffuse = max(dot(n,dl), 0.0);
 	
 		if (diffuse > 0.0) {
-			totalDiffuse += diffuse * vec4(0.5, 0.5, 0.5, 1.0);
+			totalDiffuse += diffuse;
 			vec3 h = normalize(dl + e);
 			float intSpecular = max(dot(h,n), 0.0);
 			totalSpecular += pow(intSpecular, mat.shininess);
@@ -65,15 +65,22 @@ void main() {
 	// Point lights
 	if (candles) {
 		for (int i = 0; i < NUM_POINT_LIGHTS; i ++) {
-			vec3 l = normalize(pointLightPos[i] - DataIn.pos);
+			float POINT_INTENSITY = 10;
+			float POINT_LINEAR_ATT = 0;
+			float POINT_QUADRATIC_ATT = 0.01;
+
+			vec3 posToPointLight = pointLightPos[i] - DataIn.pos;
+			float dist = length(posToPointLight);
+			vec3 l = normalize(posToPointLight);
 			
-			float diffuse = max(dot(n,l), 0.0);
+			float point_intensity = POINT_INTENSITY / (1 + POINT_LINEAR_ATT * dist + POINT_QUADRATIC_ATT * dist * dist);
+			float diffuse = max(dot(n,l), 0.0) * point_intensity;
 		
 			if (diffuse > 0.0) {
-				totalDiffuse += diffuse;
+				totalDiffuse += diffuse; //* vec4(0.5, 0.5, 0.5, 1.0);
 				vec3 h = normalize(l + e);
 				float intSpecular = max(dot(h,n), 0.0);
-				totalSpecular += pow(intSpecular, mat.shininess);
+				totalSpecular += pow(intSpecular, mat.shininess) * point_intensity;
 			}
 		}
 	}

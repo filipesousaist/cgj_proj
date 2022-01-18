@@ -38,8 +38,9 @@
 #include "Car.h"
 #include "Cheerio.h"
 #include "Orange.h"
-#include "Table.h"
 #include "Pawn.h"
+#include "ScreenQuad.h"
+#include "Table.h"
 #include "constants.h"
 #include "Utils.h"
 
@@ -61,31 +62,15 @@ VSShaderLib shaderText;  //render bitmap text
 //File with the font
 constexpr char FONT_NAME[] = "fonts/arial.ttf";
 
-//Vector with meshes
-vector<struct MyMesh> myMeshes;
-
-vector<float> xPositions;
-vector<float> yPositions;
-vector<float> zPositions;
-
-vector<float> xScales;
-vector<float> yScales;
-vector<float> zScales;
-
-vector<float> angles;
-vector<float> xRotations;
-vector<float> yRotations;
-vector<float> zRotations;
-
 vector<Object*> gameObjects;
 
 Car* car;
 
-vector<Cheerio*> cheerios;
-
 Camera cameraProjection;
 
 float camRatio;
+
+ScreenQuad* pauseQuad;
 
 //External array storage defined in AVTmathLib.cpp
 
@@ -103,6 +88,9 @@ GLint tex_loc[2];
 GLint texMode_uniformId;
 
 GLuint TextureArray[4];
+
+int windowWidth = 0;
+int windowHeight = 0;
 
 // Camera Position
 float camX, camY, camZ;
@@ -129,7 +117,6 @@ float pointLightPos[NUM_POINT_LIGHTS][4] {
 	{0.0f, 4.0f, 15.0f, 1.0f}
 };
 
-
 bool day = true;
 bool dayKey = false;
 
@@ -142,8 +129,11 @@ bool headlightsKey = false;
 bool fog = false;
 bool fogKey = false;
 
-bool showText = false;
+bool showText = true;
 bool showTextKey = false;
+
+bool paused = false;
+bool pausedKey = false;
 
 void timer(int value)
 {
@@ -185,8 +175,15 @@ void setCameraProjection() {
 //
 
 void changeSize(int w, int h) {
+	windowWidth = w;
+	windowHeight = h;
+
+	// Update pause quad size and position
+	float scale = fminf(windowWidth, windowHeight);
+	pauseQuad->resize(scale * 1.0f, scale * 0.2f, w, h);
+
 	// Prevent a divide by zero, when window is too short
-	if(h == 0)
+	if (h == 0)
 		h = 1;
 	// set the viewport to be the entire window
 	glViewport(0, 0, w, h);
@@ -296,6 +293,7 @@ void renderObject(Object* obj) {
 		translate(MODEL, obj->getX(), obj->getY(), obj->getZ());
 		rotate(MODEL, obj->getAngle(), 0, 1, 0);
 		rotate(MODEL, obj->getRollAngle(), 0, 0, -1);
+		scale(MODEL, obj->getScaleX(), obj->getScaleY(), obj->getScaleZ());
 		translate(MODEL, part.position[0], part.position[1], part.position[2]);
 		rotate(MODEL, part.angle, part.rotationAxis[0], part.rotationAxis[1], part.rotationAxis[2]);
 		scale(MODEL, part.scale[0], part.scale[1], part.scale[2]);
@@ -321,6 +319,33 @@ void renderObject(Object* obj) {
 	}
 }
 
+void renderHUDShapes() {
+	pushMatrix(MODEL);
+	pushMatrix(VIEW);
+	pushMatrix(PROJECTION);
+
+	loadIdentity(MODEL);
+	loadIdentity(VIEW);
+	loadIdentity(PROJECTION);
+
+	pushMatrix(VIEW);
+	loadIdentity(VIEW); //viewer at World origin, looking down at negative z direction
+	ortho(-windowWidth * 0.5f, windowWidth * 0.5f, -windowHeight * 0.5f, windowHeight * 0.5f, -1, 1);
+
+	glDisable(GL_DEPTH_TEST);
+	glDisable(GL_CULL_FACE);
+	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
+	//renderObject(pauseQuad);
+
+	glEnable(GL_DEPTH_TEST);
+	glEnable(GL_CULL_FACE);
+
+	popMatrix(MODEL);
+	popMatrix(VIEW);
+	popMatrix(PROJECTION);
+}
+
 void renderText() {
 	//Render text (bitmap fonts) in screen coordinates. So use ortoghonal projection with viewport coordinates.
 	glDisable(GL_DEPTH_TEST);
@@ -343,6 +368,13 @@ void renderText() {
 	RenderText(shaderText, "Speed " + std::to_string(car->getSpeed()), 25.0f, 50.0f, 0.5f, 0.5f, 0.2f, 0.8f);
 	RenderText(shaderText, "Angular speed " + std::to_string(car->getAngularSpeed()), 25.0f, 25.0f, 0.5f, 0.5f, 0.8f, 0.2f);
 	
+	if (paused) {
+		float HUDscale = fminf(windowWidth, windowHeight);
+		
+		RenderText(shaderText, "GAME PAUSED", windowWidth * 0.243f, windowHeight * 0.465f + 0.25f,
+			0.002f * HUDscale, 1.0f, 1.0f, 1.0f);
+	}
+
 	popMatrix(MODEL);
 	popMatrix(VIEW);
 	popMatrix(PROJECTION);
@@ -352,8 +384,9 @@ void renderText() {
 }
 
 void renderScene(void) {
+
 	int currentTime = glutGet(GLUT_ELAPSED_TIME);
-	int deltaTime = currentTime - lastTime;
+	int deltaTime = paused ? 0 : currentTime - lastTime;
 
 	FrameCount++;
 
@@ -381,8 +414,10 @@ void renderScene(void) {
 	for (Object* obj : gameObjects)
 		obj->handleCollision();
 
-	if (showText)
+	if (showText) {
+		renderHUDShapes();
 		renderText();
+	}
 	
 	glutSwapBuffers();
 
@@ -452,6 +487,13 @@ void processKeys(unsigned char key, int xx, int yy)
 			showText = !showText;
 		}
 		break;
+
+	case ' ': // text
+		if (!pausedKey) {
+			pausedKey = true;
+			paused = !paused;
+		}
+		break;
 	}
 }
 
@@ -476,7 +518,8 @@ void processKeysUp(unsigned char key, int xx, int yy)
 		fogKey = false; break;
 	case 't':
 		showTextKey = false; break;
-
+	case ' ':
+		pausedKey = false; break;
 	}
 }
 
@@ -684,6 +727,10 @@ void createScene() {
 			candlePositions[2 * i], 0, candlePositions[2 * i + 1], 3.5f));
 
 	gameObjects.push_back(new Pawn());
+
+	gameObjects.push_back(new ScreenQuad());
+
+	pauseQuad = new ScreenQuad();
 }
 
 void init()
