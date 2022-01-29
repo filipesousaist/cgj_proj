@@ -90,11 +90,11 @@
     <ClCompile Include="ScreenQuad.cpp">
       <Filter>Source Files\Objects</Filter>
     </ClCompile>
-    <ClCompile Include="E:\Universidade\AVT_SnowMenFireworks\AVT_SnowMenFireworks\l3dBillboard.cpp">
-      <Filter>Source Files\AVT</Filter>
-    </ClCompile>
     <ClCompile Include="Tree.cpp">
       <Filter>Source Files\Objects</Filter>
+    </ClCompile>
+    <ClCompile Include="l3dBillboard.cpp">
+      <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -161,16 +161,15 @@
     <ClInclude Include="ScreenQuad.h">
       <Filter>Header Files\Objects</Filter>
     </ClInclude>
-<<<<<<< HEAD
     <ClInclude Include="flare.h">
       <Filter>Header Files</Filter>
-=======
-    <ClInclude Include="E:\Universidade\AVT_SnowMenFireworks\AVT_SnowMenFireworks\l3DBillboard.h">
-      <Filter>Header Files\AVT</Filter>
     </ClInclude>
     <ClInclude Include="Tree.h">
       <Filter>Header Files\Objects</Filter>
->>>>>>> 64524c8df515e60eafc64f0e7cfa0eb2f266d0c5
+
+    </ClInclude>
+    <ClInclude Include="l3DBillboard.h">
+      <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
