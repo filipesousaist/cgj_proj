@@ -165,7 +165,7 @@
     <ClCompile Include="Candle.cpp" />
     <ClCompile Include="Car.cpp" />
     <ClCompile Include="Cheerio.cpp" />
-    <ClCompile Include="E:\Universidade\AVT_SnowMenFireworks\AVT_SnowMenFireworks\l3dBillboard.cpp" />
+    <ClCompile Include="l3dBillboard.cpp" />
     <ClCompile Include="lightDemo.cpp" />
     <ClCompile Include="MathUtils.cpp" />
     <ClCompile Include="Object.cpp" />
@@ -186,10 +186,10 @@
     <ClInclude Include="Car.h" />
     <ClInclude Include="Cheerio.h" />
     <ClInclude Include="cube.h" />
-    <ClInclude Include="E:\Universidade\AVT_SnowMenFireworks\AVT_SnowMenFireworks\l3DBillboard.h" />
     <ClInclude Include="ft2build.h" />
     <ClInclude Include="geometry.h" />
     <ClInclude Include="constants.h" />
+    <ClInclude Include="l3DBillboard.h" />
     <ClInclude Include="MathUtils.h" />
     <ClInclude Include="Object.h" />
     <ClInclude Include="Orange.h" />

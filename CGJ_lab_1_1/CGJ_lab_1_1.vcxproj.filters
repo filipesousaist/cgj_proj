@@ -90,11 +90,11 @@
     <ClCompile Include="ScreenQuad.cpp">
       <Filter>Source Files\Objects</Filter>
     </ClCompile>
-    <ClCompile Include="E:\Universidade\AVT_SnowMenFireworks\AVT_SnowMenFireworks\l3dBillboard.cpp">
-      <Filter>Source Files\AVT</Filter>
-    </ClCompile>
     <ClCompile Include="Tree.cpp">
       <Filter>Source Files\Objects</Filter>
+    </ClCompile>
+    <ClCompile Include="l3dBillboard.cpp">
+      <Filter>Source Files\AVT</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -161,11 +161,11 @@
     <ClInclude Include="ScreenQuad.h">
       <Filter>Header Files\Objects</Filter>
     </ClInclude>
-    <ClInclude Include="E:\Universidade\AVT_SnowMenFireworks\AVT_SnowMenFireworks\l3DBillboard.h">
-      <Filter>Header Files\AVT</Filter>
-    </ClInclude>
     <ClInclude Include="Tree.h">
       <Filter>Header Files\Objects</Filter>
+    </ClInclude>
+    <ClInclude Include="l3DBillboard.h">
+      <Filter>Header Files\AVT</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
