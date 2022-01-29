@@ -184,6 +184,7 @@
     <ClInclude Include="Car.h" />
     <ClInclude Include="Cheerio.h" />
     <ClInclude Include="cube.h" />
+    <ClInclude Include="flare.h" />
     <ClInclude Include="ft2build.h" />
     <ClInclude Include="geometry.h" />
     <ClInclude Include="constants.h" />
@@ -208,9 +209,14 @@
   </ItemGroup>
   <ItemGroup>
     <Image Include="img\checker.png" />
+    <Image Include="img\crcl.tga" />
+    <Image Include="img\flar.tga" />
+    <Image Include="img\hxgn.tga" />
     <Image Include="img\lightwood.tga" />
     <Image Include="img\orangeTex.png" />
+    <Image Include="img\ring.tga" />
     <Image Include="img\stone.tga" />
+    <Image Include="img\sun.tga" />
     <Image Include="img\tablecloth.png" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

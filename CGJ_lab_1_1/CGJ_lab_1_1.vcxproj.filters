@@ -155,6 +155,9 @@
     <ClInclude Include="ScreenQuad.h">
       <Filter>Header Files\Objects</Filter>
     </ClInclude>
+    <ClInclude Include="flare.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="Dependencies.exe" />
@@ -185,6 +188,21 @@
       <Filter>Resource Files\Images</Filter>
     </Image>
     <Image Include="img\stone.tga">
+      <Filter>Resource Files\Images</Filter>
+    </Image>
+    <Image Include="img\crcl.tga">
+      <Filter>Resource Files\Images</Filter>
+    </Image>
+    <Image Include="img\flar.tga">
+      <Filter>Resource Files\Images</Filter>
+    </Image>
+    <Image Include="img\hxgn.tga">
+      <Filter>Resource Files\Images</Filter>
+    </Image>
+    <Image Include="img\ring.tga">
+      <Filter>Resource Files\Images</Filter>
+    </Image>
+    <Image Include="img\sun.tga">
       <Filter>Resource Files\Images</Filter>
     </Image>
   </ItemGroup>

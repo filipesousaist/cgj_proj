@@ -128,6 +128,13 @@ void main() {
 		else // diffuse color is replaced by texel color, with specular area or ambient (0.07 * texel)
 			colorOut = max(totalDiffuse * texel + finalSpecular, 0.07 * texel);
 	}
+	else if (mat.texCount == -1) // modulated texture for particle
+	{
+		texel = texture(texmap, DataIn.texCoord);  //texel from element flare texture
+		if((texel.a == 0.0)  || (mat.diffuse.a == 0.0) ) discard;
+		else
+			colorOut = mat.diffuse * texel;
+	}
 	else // multitexturing
 	{
 		texel = texture(texmap, DataIn.texCoord);
