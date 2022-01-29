@@ -17,8 +17,8 @@ const int
 	CHECKERS_TEX = 2,
 	ORANGE_TEX = 3,
 	ORANGE_Norm = 4,
-	TREE_TEX = 5;
-
+	TREE_TEX = 5,
+	PARTICLE_TEX = 6;
 const int GL_TEXTURES[] = { GL_TEXTURE0, GL_TEXTURE1 };
 
 const int NUM_POINT_LIGHTS = 6;
@@ -26,3 +26,5 @@ const int NUM_POINT_LIGHTS = 6;
 const int NUM_SPOT_LIGHTS = 2;
 
 const int NUM_ORANGES = 6;
+
+const int MAX_PARTICLES = 1500;

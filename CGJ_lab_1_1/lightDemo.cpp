@@ -42,10 +42,13 @@
 #include "ScreenQuad.h"
 #include "Table.h"
 #include "Tree.h"
+#include "Firework.h"
 #include "constants.h"
 #include "l3DBillboard.h"
 #include "Utils.h"
 #include <flare.h>
+
+#define frand()		((float)rand()/RAND_MAX)
 
 using namespace std;
 using namespace Utils;
@@ -66,6 +69,8 @@ VSShaderLib shaderText;  //render bitmap text
 constexpr char FONT_NAME[] = "fonts/arial.ttf";
 
 vector<Object*> gameObjects;
+vector<Firework*> fireworks;
+int num_dead_particles = 0;
 
 Car* car;
 
@@ -94,7 +99,7 @@ GLint tex_normalMap_loc;
 
 
 GLuint FlareTextureArray[5];
-GLuint TextureArray[6];
+GLuint TextureArray[7];
 
 int windowWidth = 0;
 int windowHeight = 0;
@@ -315,6 +320,9 @@ void renderObject(Object* obj) {
 		}
 		loc = glGetUniformLocation(shader.getProgramIndex(), "mergeTextureWithColor");
 		glUniform1i(loc, part.mesh.mat.mergeTextureWithColor);
+
+		loc = glGetUniformLocation(shader.getProgramIndex(), "particle");
+		glUniform1i(loc, 0);
 		
 		if (part.mesh.mat.texIndices[0] == TREE_TEX) {
 			float worldPos[3]{ part.position[0], part.position[1], part.position[2] };
@@ -665,7 +673,21 @@ void processKeys(unsigned char key, int xx, int yy)
 		}
 		break;
 	
-	case 'g': // fla	re
+	case 'k': //fireworks
+		if (!fireworkKey) {
+			if (firework) {
+				firework = false;
+				fireworks.clear();
+			}
+			else {
+				initFireworks();
+				fireworkKey = true;
+				firework = true;
+			}
+		}
+		break;
+	
+	case 'g': // flare
 		if (candlesKey) flare = false;
 		else
 			if (flare) {
@@ -858,13 +880,14 @@ GLuint setupShaders() {
 void createScene() {
 	//Texture Object definition
 
-	glGenTextures(6, TextureArray);
+	glGenTextures(7, TextureArray);
 	Texture2D_Loader(TextureArray, "img/stone.tga", STONE_TEX);
 	Texture2D_Loader(TextureArray, "img/lightwood.tga", WOOD_TEX);
 	Texture2D_Loader(TextureArray, "img/checker.png", CHECKERS_TEX);
 	Texture2D_Loader(TextureArray, "img/orangeTex.png", ORANGE_TEX);
 	Texture2D_Loader(TextureArray, "img/Orange_001_NORM.jpg", ORANGE_Norm);
 	Texture2D_Loader(TextureArray, "img/tree.tga", TREE_TEX);
+	Texture2D_Loader(TextureArray, "img/particle.tga", PARTICLE_TEX);
 
 	//Flare elements textures
 	glGenTextures(5, FlareTextureArray);

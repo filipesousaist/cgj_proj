@@ -93,6 +93,9 @@
     <ClCompile Include="Tree.cpp">
       <Filter>Source Files\Objects</Filter>
     </ClCompile>
+    <ClCompile Include="Firework.cpp">
+      <Filter>Source Files\Objects</Filter>
+    </ClCompile>
     <ClCompile Include="l3dBillboard.cpp">
       <Filter>Source Files\AVT</Filter>
     </ClCompile>
@@ -162,6 +165,9 @@
       <Filter>Header Files\Objects</Filter>
     </ClInclude>
     <ClInclude Include="Tree.h">
+      <Filter>Header Files\Objects</Filter>
+    </ClInclude>
+    <ClInclude Include="Firework.h">
       <Filter>Header Files\Objects</Filter>
     </ClInclude>
     <ClInclude Include="l3DBillboard.h">
