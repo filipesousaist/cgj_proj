@@ -41,7 +41,9 @@
 #include "Pawn.h"
 #include "ScreenQuad.h"
 #include "Table.h"
+#include "Tree.h"
 #include "constants.h"
+#include "l3DBillboard.h"
 #include "Utils.h"
 #include <flare.h>
 
@@ -89,8 +91,8 @@ GLint normal_uniformId;
 GLint tex_loc[2];
 GLint texMode_uniformId;
 
-GLuint TextureArray[4];
 GLuint FlareTextureArray[5];
+GLuint TextureArray[5];
 
 int windowWidth = 0;
 int windowHeight = 0;
@@ -101,6 +103,7 @@ float lightScreenPos[3];  //Position of the light in Window Coordinates
 
 // Camera Position
 float camX, camY, camZ;
+float camWorld[4];
 
 // Mouse Tracking Variables
 int startX, startY, tracking = 0;
@@ -217,7 +220,7 @@ void updateCarCamera() {
 	float y = car->getY();
 	float z = car->getZ();
 
-	float camWorld[4];
+	
 	float camLocal[4]{ camX, camY, camZ, 1 };
 
 	pushMatrix(MODEL);
@@ -244,7 +247,11 @@ void setCameraLookAt() {
 	case Camera::ORTHOGONAL:
 		lookAt(0, 100, 0, 0, 0, 0, 1, 0, 0); break;
 	case Camera::PERSPECTIVE:
-		lookAt(-66, 30, -66, 0, 0, 0, 0, 1, 0); break;
+		lookAt(-66, 30, -66, 0, 0, 0, 0, 1, 0); 
+		camWorld[0] = -66;
+		camWorld[1] = 30;
+		camWorld[2] = -66;
+		break;
 	case Camera::CAR:
 		updateCarCamera(); break;
 	}
@@ -294,12 +301,26 @@ void renderObject(Object* obj) {
 		}
 		loc = glGetUniformLocation(shader.getProgramIndex(), "mergeTextureWithColor");
 		glUniform1i(loc, part.mesh.mat.mergeTextureWithColor);
+		
+		if (part.mesh.mat.texIndices[0] == TREE_TEX) {
+			float worldPos[3]{ part.position[0], part.position[1], part.position[2] };
+
+			pushMatrix(MODEL);
+			translate(MODEL, part.position[0], part.position[1], part.position[2]);
+			if (cameraProjection == Camera::PERSPECTIVE)
+				l3dBillboardSphericalBegin(camWorld, worldPos);
+			else if (cameraProjection == Camera::CAR)
+				l3dBillboardCylindricalBegin(camWorld, worldPos);
+
+		}
 
 		// send the material
-		loc = glGetUniformLocation(shader.getProgramIndex(), "mat.ambient");
-		glUniform4fv(loc, 1, part.mesh.mat.ambient);
-		loc = glGetUniformLocation(shader.getProgramIndex(), "mat.diffuse");
-		glUniform4fv(loc, 1, part.mesh.mat.diffuse);
+		if (part.mesh.mat.texIndices[0] != TREE_TEX) {
+			loc = glGetUniformLocation(shader.getProgramIndex(), "mat.ambient");
+			glUniform4fv(loc, 1, part.mesh.mat.ambient);
+			loc = glGetUniformLocation(shader.getProgramIndex(), "mat.diffuse");
+			glUniform4fv(loc, 1, part.mesh.mat.diffuse);
+		}
 		loc = glGetUniformLocation(shader.getProgramIndex(), "mat.specular");
 		glUniform4fv(loc, 1, part.mesh.mat.specular);
 		loc = glGetUniformLocation(shader.getProgramIndex(), "mat.shininess");
@@ -308,14 +329,15 @@ void renderObject(Object* obj) {
 		glUniform1i(loc, part.mesh.mat.texCount);
 		pushMatrix(MODEL);
 
-		translate(MODEL, obj->getX(), obj->getY(), obj->getZ());
-		rotate(MODEL, obj->getAngle(), 0, 1, 0);
-		rotate(MODEL, obj->getRollAngle(), 0, 0, -1);
-		scale(MODEL, obj->getScaleX(), obj->getScaleY(), obj->getScaleZ());
-		translate(MODEL, part.position[0], part.position[1], part.position[2]);
-		rotate(MODEL, part.angle, part.rotationAxis[0], part.rotationAxis[1], part.rotationAxis[2]);
-		scale(MODEL, part.scale[0], part.scale[1], part.scale[2]);
-
+		if (part.mesh.mat.texIndices[0] != TREE_TEX) {
+			translate(MODEL, obj->getX(), obj->getY(), obj->getZ());
+			rotate(MODEL, obj->getAngle(), 0, 1, 0);
+			rotate(MODEL, obj->getRollAngle(), 0, 0, -1);
+			scale(MODEL, obj->getScaleX(), obj->getScaleY(), obj->getScaleZ());
+			translate(MODEL, part.position[0], part.position[1], part.position[2]);
+			rotate(MODEL, part.angle, part.rotationAxis[0], part.rotationAxis[1], part.rotationAxis[2]);
+			scale(MODEL, part.scale[0], part.scale[1], part.scale[2]);
+		}
 		// send matrices to OGL
 		computeDerivedMatrix(PROJ_VIEW_MODEL);
 		glUniformMatrix4fv(vm_uniformId, 1, GL_FALSE, mCompMatrix[VIEW_MODEL]);
@@ -334,6 +356,9 @@ void renderObject(Object* obj) {
 		glBindVertexArray(0);
 
 		popMatrix(MODEL);
+
+		if (part.mesh.mat.texIndices[0] == TREE_TEX)
+			popMatrix(MODEL);
 	}
 }
 
@@ -807,11 +832,12 @@ GLuint setupShaders() {
 void createScene() {
 	//Texture Object definition
 
-	glGenTextures(4, TextureArray);
+	glGenTextures(5, TextureArray);
 	Texture2D_Loader(TextureArray, "img/stone.tga", STONE_TEX);
 	Texture2D_Loader(TextureArray, "img/lightwood.tga", WOOD_TEX);
 	Texture2D_Loader(TextureArray, "img/checker.png", CHECKERS_TEX);
 	Texture2D_Loader(TextureArray, "img/orangeTex.png", ORANGE_TEX);
+	Texture2D_Loader(TextureArray, "img/tree.tga", TREE_TEX);
 
 	//Flare elements textures
 	glGenTextures(5, FlareTextureArray);
@@ -873,6 +899,9 @@ void createScene() {
 	for (int i = 0; i < sizeof(candlePositions) / (2 * sizeof(float)); i++)
 		gameObjects.push_back(new Candle(
 			candlePositions[2 * i], 0, candlePositions[2 * i + 1], 3.5f));
+
+	gameObjects.push_back(new Tree(0, 2.5f, 25));
+	gameObjects.push_back(new Tree(0, 2.5f, -25));
 
 	gameObjects.push_back(new Pawn());
 
