@@ -203,9 +203,6 @@ void renderFirework(Firework* particle) {
 		loc = glGetUniformLocation(shader.getProgramIndex(), "mergeTextureWithColor");
 		glUniform1i(loc, part.mesh.mat.mergeTextureWithColor);
 
-		loc = glGetUniformLocation(shader.getProgramIndex(), "particle");
-		glUniform1i(loc, 1);
-
 		loc = glGetUniformLocation(shader.getProgramIndex(), "mat.texCount");
 		glUniform1i(loc, -1);
 
@@ -395,9 +392,6 @@ void renderObject(Object* obj) {
 		loc = glGetUniformLocation(shader.getProgramIndex(), "mergeTextureWithColor");
 		glUniform1i(loc, part.mesh.mat.mergeTextureWithColor);
 
-		loc = glGetUniformLocation(shader.getProgramIndex(), "particle");
-		glUniform1i(loc, 0);
-		
 		if (part.mesh.mat.texIndices[0] == TREE_TEX) {
 			float worldPos[3]{ part.position[0], part.position[1], part.position[2] };
 
