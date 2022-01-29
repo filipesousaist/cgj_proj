@@ -90,9 +90,11 @@ GLint vm_uniformId;
 GLint normal_uniformId;
 GLint tex_loc[2];
 GLint texMode_uniformId;
+GLint tex_normalMap_loc;
+
 
 GLuint FlareTextureArray[5];
-GLuint TextureArray[5];
+GLuint TextureArray[6];
 
 int windowWidth = 0;
 int windowHeight = 0;
@@ -147,6 +149,9 @@ bool pausedKey = false;
 
 bool flare = false;
 bool flareKey = false;
+
+bool bumpmap = false;
+bool bumpmapKey = false;
 
 inline double clamp(const double x, const double min, const double max) {
 	return (x < min ? min : (x > max ? max : x));
@@ -295,9 +300,18 @@ void renderObject(Object* obj) {
 		GLint loc;
 		// textures
 		for (int t = 0; t < part.mesh.mat.texCount; t++) {
+			glUniform1i(texMode_uniformId, 0);
 			glActiveTexture(GL_TEXTURES[t]);
 			glBindTexture(GL_TEXTURE_2D, TextureArray[part.mesh.mat.texIndices[t]]);
 			glUniform1i(tex_loc[t], t);
+		}
+		if (part.mesh.mat.texIndices[0] == ORANGE_TEX) { //check if it is orange
+			if (bumpmap) {
+				glActiveTexture(GL_TEXTURE1);
+				glBindTexture(GL_TEXTURE_2D, TextureArray[ORANGE_Norm]); //normal.tga
+				glUniform1i(texMode_uniformId, 2);
+				glUniform1i(tex_normalMap_loc, 1);
+			}
 		}
 		loc = glGetUniformLocation(shader.getProgramIndex(), "mergeTextureWithColor");
 		glUniform1i(loc, part.mesh.mat.mergeTextureWithColor);
@@ -398,7 +412,7 @@ void render_flare(FLARE_DEF* flare, int lx, int ly, int* m_viewport) {
 
 	// Render each element. To be used Texture Unit 0
 
-	glUniform1i(texMode_uniformId, 3); // draw modulated textured particles 
+	//glUniform1i(texMode_uniformId, 3); // draw modulated textured particles 
 	glUniform1i(tex_loc[0], 0);  //use TU 0
 
 	for (i = 0; i < flare->nPieces; ++i)
@@ -644,18 +658,26 @@ void processKeys(unsigned char key, int xx, int yy)
 		}
 		break;
 
-	case ' ': // text
+	case ' ': // pause
 		if (!pausedKey) {
 			pausedKey = true;
 			paused = !paused;
 		}
 		break;
 	
-	case 'g': // text
+	case 'g': // fla	re
 		if (candlesKey) flare = false;
 		else
-			if (flare) flare = false;
+			if (flare) {
+				flare = false;
+
+			}
 			else flare = true;
+		break;
+
+	case 'b': // bumpmap
+		if (bumpmap) bumpmap = false;
+		else bumpmap = true;
 		break;
 	}
 }
@@ -800,6 +822,8 @@ GLuint setupShaders() {
 	glBindFragDataLocation(shader.getProgramIndex(), 0, "colorOut");
 	glBindAttribLocation(shader.getProgramIndex(), VERTEX_COORD_ATTRIB, "position");
 	glBindAttribLocation(shader.getProgramIndex(), NORMAL_ATTRIB, "normal");
+	glBindAttribLocation(shader.getProgramIndex(), TANGENT_ATTRIB, "tangent");
+
 	//glBindAttribLocation(shader.getProgramIndex(), TEXTURE_COORD_ATTRIB, "texCoord");
 
 	glLinkProgram(shader.getProgramIndex());
@@ -810,6 +834,8 @@ GLuint setupShaders() {
 	normal_uniformId = glGetUniformLocation(shader.getProgramIndex(), "m_normal");
 	tex_loc[0] = glGetUniformLocation(shader.getProgramIndex(), "texmap");
 	tex_loc[1] = glGetUniformLocation(shader.getProgramIndex(), "texmap1");
+	tex_normalMap_loc = glGetUniformLocation(shader.getProgramIndex(), "normalMap");
+
 
 	std::printf("InfoLog for Per Fragment Phong Lightning Shader\n%s\n\n", shader.getAllInfoLogs().c_str());
 
@@ -832,11 +858,12 @@ GLuint setupShaders() {
 void createScene() {
 	//Texture Object definition
 
-	glGenTextures(5, TextureArray);
+	glGenTextures(6, TextureArray);
 	Texture2D_Loader(TextureArray, "img/stone.tga", STONE_TEX);
 	Texture2D_Loader(TextureArray, "img/lightwood.tga", WOOD_TEX);
 	Texture2D_Loader(TextureArray, "img/checker.png", CHECKERS_TEX);
 	Texture2D_Loader(TextureArray, "img/orangeTex.png", ORANGE_TEX);
+	Texture2D_Loader(TextureArray, "img/Orange_001_NORM.jpg", ORANGE_Norm);
 	Texture2D_Loader(TextureArray, "img/tree.tga", TREE_TEX);
 
 	//Flare elements textures

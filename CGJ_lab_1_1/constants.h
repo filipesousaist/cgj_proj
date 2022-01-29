@@ -16,7 +16,8 @@ const int
 	WOOD_TEX = 1,
 	CHECKERS_TEX = 2,
 	ORANGE_TEX = 3,
-	TREE_TEX = 4;
+	ORANGE_Norm = 4,
+	TREE_TEX = 5;
 
 const int GL_TEXTURES[] = { GL_TEXTURE0, GL_TEXTURE1 };
 

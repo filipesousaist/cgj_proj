@@ -217,7 +217,9 @@
     <Image Include="img\flar.tga" />
     <Image Include="img\hxgn.tga" />
     <Image Include="img\lightwood.tga" />
+    <Image Include="img\orangeNormal.jpg" />
     <Image Include="img\orangeTex.png" />
+    <Image Include="img\Orange_001_NORM.jpg" />
     <Image Include="img\ring.tga" />
     <Image Include="img\stone.tga" />
     <Image Include="img\sun.tga" />

@@ -57,11 +57,11 @@ void Orange::move(int deltaTime) {
 void Orange::addParts() {
 	MyMesh amesh;
 
-	float amb[] = { 0.8f, 0.4f, 0.0f, 1.0f };
-	float diff[] = { 0.6f, 0.6f, 0.2f, 1.0f };
-	float spec[] = { 0.2f, 0.2f, 0.2f, 1.0f };
+	float amb[] = { 0.2f, 0.15f, 0.1f, 1.0f };
+	float diff[] = { 0.8f, 0.6f, 0.4f, 1.0f };
+	float spec[] = { 0.0f, 0.0f, 0.0f, 1.0f };
 	float emissive[] = { 0.0f, 0.0f, 0.0f, 1.0f };
-	float shininess = 80.0f;
+	float shininess = 5.0f;
 	int texIndices[] = { ORANGE_TEX, NO_TEX };
 	bool mergeTextureWithColor = false;
 

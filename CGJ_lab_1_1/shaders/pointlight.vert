@@ -8,6 +8,8 @@ uniform mat3 m_normal;
 in vec4 position;
 in vec4 normal;    //por causa do gerador de geometria
 in vec4 texCoord;
+in vec4 tangent;
+out vec4 fragTan;
 
 out Data {
 	vec3 pos;
@@ -17,12 +19,12 @@ out Data {
 } DataOut;
 
 void main () {
-
 	DataOut.pos = vec3(m_viewModel * position);
 
 	DataOut.normal = normalize(m_normal * normal.xyz);
 	DataOut.eye = -DataOut.pos;
 	DataOut.texCoord = texCoord.st;
 
+	fragTan = tangent;
 	gl_Position = m_pvm * position;
 }
