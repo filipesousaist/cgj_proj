@@ -46,7 +46,6 @@
 #include "constants.h"
 #include "l3DBillboard.h"
 #include "Utils.h"
-#include "lightDemo.h"
 
 #define frand()		((float)rand()/RAND_MAX)
 
@@ -79,6 +78,7 @@ Camera cameraProjection;
 float camRatio;
 
 ScreenQuad* pauseQuad;
+MyMesh flareQuad;
 
 //External array storage defined in AVTmathLib.cpp
 
@@ -95,10 +95,14 @@ GLint normal_uniformId;
 GLint tex_loc[2];
 GLint texMode_uniformId;
 
-GLuint TextureArray[6];
+GLuint TextureArray[5];
 
 int windowWidth = 0;
 int windowHeight = 0;
+
+//Flare effect
+FLARE_DEF AVTflare;
+float lightScreenPos[3];  //Position of the light in Window Coordinates
 
 // Camera Position
 float camX, camY, camZ;
@@ -143,9 +147,6 @@ bool showTextKey = false;
 
 bool paused = false;
 bool pausedKey = false;
-
-bool firework = false;
-bool fireworkKey = false;
 
 void timer(int value)
 {
@@ -356,73 +357,6 @@ void renderObject(Object* obj) {
 	}
 }
 
-void initFireworks()
-{
-	for (int i = 0; i < MAX_PARTICLES; i++) {
-		fireworks.push_back(new Firework(0, 7.5f, 0,
-			0.8f * frand() + 0.2f, frand() * PI, 2.0f * frand() * PI));
-	}
-}
-
-void renderFirework(Firework* particle) {
-	vector<Object::Part>* parts = particle->getParts();
-	particle->updateParticle(0.033f);
-
-	for (const Object::Part& part : *parts) {
-		GLint loc;
-		
-		glActiveTexture(GL_TEXTURES[0]);
-		glBindTexture(GL_TEXTURE_2D, TextureArray[PARTICLE_TEX]);
-		glUniform1i(tex_loc[0], 0);
-
-		loc = glGetUniformLocation(shader.getProgramIndex(), "mergeTextureWithColor");
-		glUniform1i(loc, part.mesh.mat.mergeTextureWithColor);
-
-		loc = glGetUniformLocation(shader.getProgramIndex(), "particle");
-		glUniform1i(loc, 1);
-
-		glDepthMask(GL_FALSE);  //Depth Buffer Read Only
-
-		if (particle->isAlive()) {
-			particle->setDiffuse(0.882, 0.552, 0.211);
-
-
-			loc = glGetUniformLocation(shader.getProgramIndex(), "mat.diffuse");
-			glUniform4fv(loc, 1, particle->getDiffuse());
-
-			float worldPos[3]{ particle->getX(), particle->getY(), particle->getZ() };
-
-			pushMatrix(MODEL);
-			translate(MODEL, particle->getX(), particle->getY(), particle->getZ());
-			if (cameraProjection == Camera::PERSPECTIVE)
-				l3dBillboardSphericalBegin(camWorld, worldPos);
-			else if (cameraProjection == Camera::CAR)
-				l3dBillboardCylindricalBegin(camWorld, worldPos);
-
-			pushMatrix(MODEL);
-			translate(MODEL, particle->getX(), particle->getY(), particle->getZ());
-
-			// send matrices to OGL
-			computeDerivedMatrix(PROJ_VIEW_MODEL);
-			glUniformMatrix4fv(vm_uniformId, 1, GL_FALSE, mCompMatrix[VIEW_MODEL]);
-			glUniformMatrix4fv(pvm_uniformId, 1, GL_FALSE, mCompMatrix[PROJ_VIEW_MODEL]);
-			computeNormalMatrix3x3();
-			glUniformMatrix3fv(normal_uniformId, 1, GL_FALSE, mNormal3x3);
-
-			// Render mesh
-			glBindVertexArray(part.mesh.vao);
-			glDrawElements(part.mesh.type, part.mesh.numIndexes, GL_UNSIGNED_INT, 0);
-			glBindVertexArray(0);
-
-			popMatrix(MODEL);
-			popMatrix(MODEL);
-
-
-		}
-		else num_dead_particles++;
-	}
-}
-
 void renderHUDShapes() {
 	pushMatrix(MODEL);
 	pushMatrix(VIEW);
@@ -518,20 +452,6 @@ void renderScene(void) {
 	for (Object* obj : gameObjects)
 		obj->handleCollision();
 
-	if (firework) {
-		for (Firework* particle : fireworks)
-			renderFirework(particle);
-
-		glDepthMask(GL_TRUE);  //Depth Buffer Read Only
-		if (num_dead_particles == MAX_PARTICLES) {
-			firework = false;
-			num_dead_particles = 0;
-			fireworks.clear();
-			printf("All particles dead\n");
-		}
-
-	}
-
 	if (showText) {
 		renderHUDShapes();
 		renderText();
@@ -626,6 +546,13 @@ void processKeys(unsigned char key, int xx, int yy)
 			}
 		}
 		break;
+	
+	case 'g': // text
+		if (candlesKey) flare = false;
+		else
+			if (flare) flare = false;
+			else flare = true;
+		break;
 	}
 
 }
@@ -652,9 +579,7 @@ void processKeysUp(unsigned char key, int xx, int yy)
 	case 't':
 		showTextKey = false; break;
 	case ' ':
-		pausedKey = false; break; 
-	case 'k':
-		fireworkKey = false; break;
+		pausedKey = false; break;
 	}
 }
 
@@ -810,6 +735,14 @@ void createScene() {
 	Texture2D_Loader(TextureArray, "img/tree.tga", TREE_TEX);
 	Texture2D_Loader(TextureArray, "img/particle.tga", PARTICLE_TEX);
 
+	//Flare elements textures
+	glGenTextures(5, FlareTextureArray);
+	Texture2D_Loader(FlareTextureArray, "img/crcl.tga", 0);
+	Texture2D_Loader(FlareTextureArray, "img/flar.tga", 1);
+	Texture2D_Loader(FlareTextureArray, "img/hxgn.tga", 2);
+	Texture2D_Loader(FlareTextureArray, "img/ring.tga", 3);
+	Texture2D_Loader(FlareTextureArray, "img/sun.tga", 4);
+
 	//createTable();
 	gameObjects.push_back(new Table());
 	
@@ -871,6 +804,13 @@ void createScene() {
 	gameObjects.push_back(new ScreenQuad());
 
 	pauseQuad = new ScreenQuad();
+
+	// create geometry and VAO of the quad for flare elements
+	flareQuad = createQuad(1, 1);
+	flareQuad.mat.texCount = 1;
+
+	//Load flare from file
+	loadFlareFile(&AVTflare, "flare.txt");
 }
 
 void init()
@@ -962,6 +902,60 @@ int main(int argc, char **argv) {
 	glutMainLoop();
 
 	return(0);
+}
+
+unsigned int getTextureId(char* name) {
+	int i;
+
+	for (i = 0; i < NTEXTURES; ++i)
+	{
+		if (strncmp(name, flareTextureNames[i], strlen(name)) == 0)
+			return i;
+	}
+	return -1;
+}
+void    loadFlareFile(FLARE_DEF* flare, char* filename)
+{
+	int     n = 0;
+	FILE* f;
+	char    buf[256];
+	int fields;
+
+	memset(flare, 0, sizeof(FLARE_DEF));
+
+	f = fopen(filename, "r");
+	if (f)
+	{
+		fgets(buf, sizeof(buf), f);
+		sscanf(buf, "%f %f", &flare->fScale, &flare->fMaxSize);
+
+		while (!feof(f))
+		{
+			char            name[8] = { '\0', };
+			double          dDist = 0.0, dSize = 0.0;
+			float			color[4];
+			int				id;
+
+			fgets(buf, sizeof(buf), f);
+			fields = sscanf(buf, "%4s %lf %lf ( %f %f %f %f )", name, &dDist, &dSize, &color[3], &color[0], &color[1], &color[2]);
+			if (fields == 7)
+			{
+				for (int i = 0; i < 4; ++i) color[i] = clamp(color[i] / 255.0f, 0.0f, 1.0f);
+				id = getTextureId(name);
+				if (id < 0) printf("Texture name not recognized\n");
+				else
+					flare->element[n].textureId = id;
+				flare->element[n].fDistance = (float)dDist;
+				flare->element[n].fSize = (float)dSize;
+				memcpy(flare->element[n].matDiffuse, color, 4 * sizeof(float));
+				++n;
+			}
+		}
+
+		flare->nPieces = n;
+		fclose(f);
+	}
+	else printf("Flare file opening error\n");
 }
 
 

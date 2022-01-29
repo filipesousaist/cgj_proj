@@ -93,11 +93,11 @@
     <ClCompile Include="Tree.cpp">
       <Filter>Source Files\Objects</Filter>
     </ClCompile>
-    <ClCompile Include="l3dBillboard.cpp">
-      <Filter>Source Files\AVT</Filter>
-    </ClCompile>
     <ClCompile Include="Firework.cpp">
       <Filter>Source Files\Objects</Filter>
+    </ClCompile>
+    <ClCompile Include="l3dBillboard.cpp">
+      <Filter>Source Files\AVT</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -167,14 +167,14 @@
     <ClInclude Include="Tree.h">
       <Filter>Header Files\Objects</Filter>
     </ClInclude>
-    <ClInclude Include="l3DBillboard.h">
-      <Filter>Header Files\AVT</Filter>
-    </ClInclude>
     <ClInclude Include="Firework.h">
       <Filter>Header Files\Objects</Filter>
     </ClInclude>
-    <ClInclude Include="lightDemo.h">
-      <Filter>Header Files</Filter>
+    <ClInclude Include="l3DBillboard.h">
+      <Filter>Header Files\AVT</Filter>
+    </ClInclude>
+    <ClInclude Include="flare.h">
+      <Filter>Header Files\Objects</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -208,8 +208,23 @@
     <Image Include="img\stone.tga">
       <Filter>Resource Files\Images</Filter>
     </Image>
-    <Image Include="img\newOrange.png">
+    <Image Include="img\crcl.tga">
       <Filter>Resource Files\Images</Filter>
+    </Image>
+    <Image Include="img\flar.tga">
+      <Filter>Resource Files\Images</Filter>
+    </Image>
+    <Image Include="img\hxgn.tga">
+      <Filter>Resource Files\Images</Filter>
+    </Image>
+    <Image Include="img\ring.tga">
+      <Filter>Resource Files\Images</Filter>
+    </Image>
+    <Image Include="img\sun.tga">
+      <Filter>Resource Files\Images</Filter>
+    </Image>
+    <Image Include="img\newOrange.png">
+      <Filter>Resource Files</Filter>
     </Image>
   </ItemGroup>
 </Project>
