@@ -222,6 +222,7 @@
     <Image Include="img\orangeNormal.jpg" />
     <Image Include="img\orangeTex.png" />
     <Image Include="img\Orange_001_NORM.jpg" />
+    <Image Include="img\particle.tga" />
     <Image Include="img\ring.tga" />
     <Image Include="img\stone.tga" />
     <Image Include="img\sun.tga" />

@@ -158,6 +158,9 @@ bool flareKey = false;
 bool bumpmap = false;
 bool bumpmapKey = false;
 
+bool firework = false;
+bool fireworkKey = false;
+
 inline double clamp(const double x, const double min, const double max) {
 	return (x < min ? min : (x > max ? max : x));
 }
@@ -175,6 +178,77 @@ void timer(int value)
 	glutSetWindowTitle(s.c_str());
     FrameCount = 0;
     glutTimerFunc(1000, timer, 0);
+}
+void initFireworks()
+{
+	for (int i = 0; i < MAX_PARTICLES; i++) {
+		fireworks.push_back(new Firework(0, 7.5f, 0,
+			0.8f * frand() + 0.2f, frand() * PI, 2.0f * frand() * PI));
+	}
+}
+
+void renderFirework(Firework* particle) {
+	glEnable(GL_BLEND);
+	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+	vector<Object::Part>* parts = particle->getParts();
+	particle->updateParticle(0.033f);
+
+	for (const Object::Part& part : *parts) {
+		GLint loc;
+
+		glActiveTexture(GL_TEXTURES[0]);
+		glBindTexture(GL_TEXTURE_2D, TextureArray[PARTICLE_TEX]);
+		glUniform1i(tex_loc[0], 0);
+
+		loc = glGetUniformLocation(shader.getProgramIndex(), "mergeTextureWithColor");
+		glUniform1i(loc, part.mesh.mat.mergeTextureWithColor);
+
+		loc = glGetUniformLocation(shader.getProgramIndex(), "particle");
+		glUniform1i(loc, 1);
+
+		loc = glGetUniformLocation(shader.getProgramIndex(), "mat.texCount");
+		glUniform1i(loc, -1);
+
+		glDepthMask(GL_FALSE);  //Depth Buffer Read Only
+
+		if (particle->isAlive()) {
+			particle->setDiffuse(0.882, 0.552, 0.211);
+
+
+			loc = glGetUniformLocation(shader.getProgramIndex(), "mat.diffuse");
+			glUniform4fv(loc, 1, particle->getDiffuse());
+
+			float worldPos[3]{ particle->getX(), particle->getY(), particle->getZ() };
+
+			pushMatrix(MODEL);
+			translate(MODEL, particle->getX(), particle->getY(), particle->getZ());
+			if (cameraProjection == Camera::PERSPECTIVE)
+				l3dBillboardSphericalBegin(camWorld, worldPos);
+			else if (cameraProjection == Camera::CAR)
+				l3dBillboardCylindricalBegin(camWorld, worldPos);
+
+			pushMatrix(MODEL);
+			translate(MODEL, particle->getX(), particle->getY(), particle->getZ());
+
+			// send matrices to OGL
+			computeDerivedMatrix(PROJ_VIEW_MODEL);
+			glUniformMatrix4fv(vm_uniformId, 1, GL_FALSE, mCompMatrix[VIEW_MODEL]);
+			glUniformMatrix4fv(pvm_uniformId, 1, GL_FALSE, mCompMatrix[PROJ_VIEW_MODEL]);
+			computeNormalMatrix3x3();
+			glUniformMatrix3fv(normal_uniformId, 1, GL_FALSE, mNormal3x3);
+
+			// Render mesh
+			glBindVertexArray(part.mesh.vao);
+			glDrawElements(part.mesh.type, part.mesh.numIndexes, GL_UNSIGNED_INT, 0);
+			glBindVertexArray(0);
+
+			popMatrix(MODEL);
+			popMatrix(MODEL);
+
+
+		}
+		else num_dead_particles++;
+	}
 }
 
 void refresh(int value)
@@ -566,6 +640,20 @@ void renderScene(void) {
 	for (Object* obj : gameObjects)
 		obj->handleCollision();
 
+	if (firework) {
+		for (Firework* particle : fireworks)
+			renderFirework(particle);
+
+		glDepthMask(GL_TRUE);  //Depth Buffer Read Only
+		if (num_dead_particles == MAX_PARTICLES) {
+			firework = false;
+			num_dead_particles = 0;
+			fireworks.clear();
+			printf("All particles dead\n");
+		}
+
+	}
+
 	if (flare && candles) {
 		int flarePos[2];
 		int m_viewport[4];
@@ -729,6 +817,8 @@ void processKeysUp(unsigned char key, int xx, int yy)
 		pausedKey = false; break;
 	case 'g':
 		flareKey = false; break;
+	case 'k':
+		fireworkKey = false; break;
 	}
 }
 

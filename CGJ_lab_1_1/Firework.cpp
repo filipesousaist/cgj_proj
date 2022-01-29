@@ -29,9 +29,9 @@ Firework::Firework(float x, float y, float z, GLfloat v, GLfloat phi, GLfloat th
 	float emissive[] = { 0.0f, 0.0f, 0.0f, 1.0f };
 	float shininess = 100.0f;
 	int texIndices[] = { PARTICLE_TEX, NO_TEX };
-	bool mergeTextureWithColor = false;
+	bool mergeTextureWithColor = true;
 
-	MyMesh amesh = createQuad(2, 2);
+	MyMesh amesh = createQuad(0.5f, 0.5f);
 	setMeshProperties(&amesh, amb, diff, spec, emissive, shininess, texIndices, mergeTextureWithColor);
 
 	this->addPart(amesh);
