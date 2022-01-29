@@ -123,7 +123,8 @@ void main() {
 	else if (mat.texCount == 1) 
 	{
 		texel = texture(texmap, DataIn.texCoord);
-		if (mergeTextureWithColor) // mix 
+		if (texel.a == 0.0) discard;
+		else if (mergeTextureWithColor) // mix 
 			colorOut = max(finalDiffuse * texel + finalSpecular, mat.ambient * texel);
 		else // diffuse color is replaced by texel color, with specular area or ambient (0.07 * texel)
 			colorOut = max(totalDiffuse * texel + finalSpecular, 0.07 * texel);
