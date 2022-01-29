@@ -42,9 +42,13 @@
 #include "ScreenQuad.h"
 #include "Table.h"
 #include "Tree.h"
+#include "Firework.h"
 #include "constants.h"
 #include "l3DBillboard.h"
 #include "Utils.h"
+#include "lightDemo.h"
+
+#define frand()		((float)rand()/RAND_MAX)
 
 using namespace std;
 using namespace Utils;
@@ -65,6 +69,8 @@ VSShaderLib shaderText;  //render bitmap text
 constexpr char FONT_NAME[] = "fonts/arial.ttf";
 
 vector<Object*> gameObjects;
+vector<Firework*> fireworks;
+int num_dead_particles = 0;
 
 Car* car;
 
@@ -89,7 +95,7 @@ GLint normal_uniformId;
 GLint tex_loc[2];
 GLint texMode_uniformId;
 
-GLuint TextureArray[5];
+GLuint TextureArray[6];
 
 int windowWidth = 0;
 int windowHeight = 0;
@@ -137,6 +143,9 @@ bool showTextKey = false;
 
 bool paused = false;
 bool pausedKey = false;
+
+bool firework = false;
+bool fireworkKey = false;
 
 void timer(int value)
 {
@@ -283,6 +292,9 @@ void renderObject(Object* obj) {
 		}
 		loc = glGetUniformLocation(shader.getProgramIndex(), "mergeTextureWithColor");
 		glUniform1i(loc, part.mesh.mat.mergeTextureWithColor);
+
+		loc = glGetUniformLocation(shader.getProgramIndex(), "particle");
+		glUniform1i(loc, 0);
 		
 		if (part.mesh.mat.texIndices[0] == TREE_TEX) {
 			float worldPos[3]{ part.position[0], part.position[1], part.position[2] };
@@ -341,6 +353,73 @@ void renderObject(Object* obj) {
 
 		if (part.mesh.mat.texIndices[0] == TREE_TEX)
 			popMatrix(MODEL);
+	}
+}
+
+void initFireworks()
+{
+	for (int i = 0; i < MAX_PARTICLES; i++) {
+		fireworks.push_back(new Firework(0, 7.5f, 0,
+			0.8f * frand() + 0.2f, frand() * PI, 2.0f * frand() * PI));
+	}
+}
+
+void renderFirework(Firework* particle) {
+	vector<Object::Part>* parts = particle->getParts();
+	particle->updateParticle(0.033f);
+
+	for (const Object::Part& part : *parts) {
+		GLint loc;
+		
+		glActiveTexture(GL_TEXTURES[0]);
+		glBindTexture(GL_TEXTURE_2D, TextureArray[PARTICLE_TEX]);
+		glUniform1i(tex_loc[0], 0);
+
+		loc = glGetUniformLocation(shader.getProgramIndex(), "mergeTextureWithColor");
+		glUniform1i(loc, part.mesh.mat.mergeTextureWithColor);
+
+		loc = glGetUniformLocation(shader.getProgramIndex(), "particle");
+		glUniform1i(loc, 1);
+
+		glDepthMask(GL_FALSE);  //Depth Buffer Read Only
+
+		if (particle->isAlive()) {
+			particle->setDiffuse(0.882, 0.552, 0.211);
+
+
+			loc = glGetUniformLocation(shader.getProgramIndex(), "mat.diffuse");
+			glUniform4fv(loc, 1, particle->getDiffuse());
+
+			float worldPos[3]{ particle->getX(), particle->getY(), particle->getZ() };
+
+			pushMatrix(MODEL);
+			translate(MODEL, particle->getX(), particle->getY(), particle->getZ());
+			if (cameraProjection == Camera::PERSPECTIVE)
+				l3dBillboardSphericalBegin(camWorld, worldPos);
+			else if (cameraProjection == Camera::CAR)
+				l3dBillboardCylindricalBegin(camWorld, worldPos);
+
+			pushMatrix(MODEL);
+			translate(MODEL, particle->getX(), particle->getY(), particle->getZ());
+
+			// send matrices to OGL
+			computeDerivedMatrix(PROJ_VIEW_MODEL);
+			glUniformMatrix4fv(vm_uniformId, 1, GL_FALSE, mCompMatrix[VIEW_MODEL]);
+			glUniformMatrix4fv(pvm_uniformId, 1, GL_FALSE, mCompMatrix[PROJ_VIEW_MODEL]);
+			computeNormalMatrix3x3();
+			glUniformMatrix3fv(normal_uniformId, 1, GL_FALSE, mNormal3x3);
+
+			// Render mesh
+			glBindVertexArray(part.mesh.vao);
+			glDrawElements(part.mesh.type, part.mesh.numIndexes, GL_UNSIGNED_INT, 0);
+			glBindVertexArray(0);
+
+			popMatrix(MODEL);
+			popMatrix(MODEL);
+
+
+		}
+		else num_dead_particles++;
 	}
 }
 
@@ -439,6 +518,20 @@ void renderScene(void) {
 	for (Object* obj : gameObjects)
 		obj->handleCollision();
 
+	if (firework) {
+		for (Firework* particle : fireworks)
+			renderFirework(particle);
+
+		glDepthMask(GL_TRUE);  //Depth Buffer Read Only
+		if (num_dead_particles == MAX_PARTICLES) {
+			firework = false;
+			num_dead_particles = 0;
+			fireworks.clear();
+			printf("All particles dead\n");
+		}
+
+	}
+
 	if (showText) {
 		renderHUDShapes();
 		renderText();
@@ -519,7 +612,22 @@ void processKeys(unsigned char key, int xx, int yy)
 			paused = !paused;
 		}
 		break;
+	
+	case 'k': //fireworks
+		if (!fireworkKey) {
+			if (firework) {
+				firework = false;
+				fireworks.clear();
+			}
+			else {
+				initFireworks();
+				fireworkKey = true;
+				firework = true;
+			}
+		}
+		break;
 	}
+
 }
 
 void processKeysUp(unsigned char key, int xx, int yy)
@@ -544,7 +652,9 @@ void processKeysUp(unsigned char key, int xx, int yy)
 	case 't':
 		showTextKey = false; break;
 	case ' ':
-		pausedKey = false; break;
+		pausedKey = false; break; 
+	case 'k':
+		fireworkKey = false; break;
 	}
 }
 
@@ -692,12 +802,13 @@ GLuint setupShaders() {
 void createScene() {
 	//Texture Object definition
 
-	glGenTextures(5, TextureArray);
+	glGenTextures(6, TextureArray);
 	Texture2D_Loader(TextureArray, "img/stone.tga", STONE_TEX);
 	Texture2D_Loader(TextureArray, "img/lightwood.tga", WOOD_TEX);
 	Texture2D_Loader(TextureArray, "img/checker.png", CHECKERS_TEX);
 	Texture2D_Loader(TextureArray, "img/orangeTex.png", ORANGE_TEX);
 	Texture2D_Loader(TextureArray, "img/tree.tga", TREE_TEX);
+	Texture2D_Loader(TextureArray, "img/particle.tga", PARTICLE_TEX);
 
 	//createTable();
 	gameObjects.push_back(new Table());

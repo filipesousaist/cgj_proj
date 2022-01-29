@@ -96,6 +96,9 @@
     <ClCompile Include="l3dBillboard.cpp">
       <Filter>Source Files\AVT</Filter>
     </ClCompile>
+    <ClCompile Include="Firework.cpp">
+      <Filter>Source Files\Objects</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="constants.h">
@@ -167,6 +170,12 @@
     <ClInclude Include="l3DBillboard.h">
       <Filter>Header Files\AVT</Filter>
     </ClInclude>
+    <ClInclude Include="Firework.h">
+      <Filter>Header Files\Objects</Filter>
+    </ClInclude>
+    <ClInclude Include="lightDemo.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="Dependencies.exe" />
@@ -197,6 +206,9 @@
       <Filter>Resource Files\Images</Filter>
     </Image>
     <Image Include="img\stone.tga">
+      <Filter>Resource Files\Images</Filter>
+    </Image>
+    <Image Include="img\newOrange.png">
       <Filter>Resource Files\Images</Filter>
     </Image>
   </ItemGroup>

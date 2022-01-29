@@ -165,6 +165,7 @@
     <ClCompile Include="Candle.cpp" />
     <ClCompile Include="Car.cpp" />
     <ClCompile Include="Cheerio.cpp" />
+    <ClCompile Include="Firework.cpp" />
     <ClCompile Include="l3dBillboard.cpp" />
     <ClCompile Include="lightDemo.cpp" />
     <ClCompile Include="MathUtils.cpp" />
@@ -186,10 +187,12 @@
     <ClInclude Include="Car.h" />
     <ClInclude Include="Cheerio.h" />
     <ClInclude Include="cube.h" />
+    <ClInclude Include="Firework.h" />
     <ClInclude Include="ft2build.h" />
     <ClInclude Include="geometry.h" />
     <ClInclude Include="constants.h" />
     <ClInclude Include="l3DBillboard.h" />
+    <ClInclude Include="lightDemo.h" />
     <ClInclude Include="MathUtils.h" />
     <ClInclude Include="Object.h" />
     <ClInclude Include="Orange.h" />
@@ -213,6 +216,7 @@
   <ItemGroup>
     <Image Include="img\checker.png" />
     <Image Include="img\lightwood.tga" />
+    <Image Include="img\newOrange.png" />
     <Image Include="img\orangeTex.png" />
     <Image Include="img\stone.tga" />
     <Image Include="img\tablecloth.png" />
