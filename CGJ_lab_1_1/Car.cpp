@@ -1,13 +1,14 @@
 #pragma once
 
-#include "Car.h"
 #include <string>
 #include <sstream>
 #include <math.h>
+#include <AVTmathLib.h>
+
+#include "Car.h"
 #include "constants.h"
 #include "Utils.h"
 #include "MathUtils.h"
-#include <AVTmathLib.h>
 
 using namespace std;
 using namespace Utils;
@@ -17,12 +18,12 @@ const float ACC = 1e-5f;
 const float ANG_SPEED = 2e-2f;
 const float MAX_SPEED = 3e-3f;
 
-float spotLightPos[NUM_SPOT_LIGHTS][4]{
+float SPOT_LIGHT_POS[NUM_SPOT_LIGHTS][4] {
 	{1.0f, 0.5f, -0.25f, 1.0f},
 	{1.0f, 0.5f, 0.25f, 1.0f}
 };
 
-Car::Car(VSShaderLib* shader, float sizeX, float sizeZ) {
+Car::Car(VSShaderLib* shader, float sizeX, float sizeZ, Lives* lives) {
 	angle = 0;
 	rollAngle = 0;
 
@@ -34,6 +35,8 @@ Car::Car(VSShaderLib* shader, float sizeX, float sizeZ) {
 	colliderSize = (sizeX + sizeZ) / 2;
 
 	this->shader = shader;
+
+	this->lives = lives;
 
 	addParts(sizeX, sizeZ);
 }
@@ -80,9 +83,9 @@ void Car::addWheels() {
 
 	float signs[]{ -1, 1 };
 
-	for (int xi = 0; xi < 2; xi++) {
+	for (int xi = 0; xi < 2; xi ++) {
 		float xSign = signs[xi];
-		for (int zi = 0; zi < 2; zi++) {
+		for (int zi = 0; zi < 2; zi ++) {
 			float zSign = signs[zi];
 
 			addPart(
@@ -126,7 +129,6 @@ void Car::move(int deltaTime) {
 	moveAngle(deltaTime);
 
 	moveSpotLights();
-
 }
 
 void Car::moveAngle(int deltaTime) {
@@ -159,12 +161,24 @@ void Car::movePosition(int deltaTime) {
 	float accDrag = speed * 3e-4f;
 	speed += (ACC * accMult - accDrag) * deltaTime;
 
-	if (abs(x) > 50.0f || abs(z) > 50.0f)
+	if (abs(x) > 50.0f || abs(z) > 50.0f) {
 		reset();
+		loseLife();
+	}
+}
+
+void uniformSpotLightPos(VSShaderLib* shader, string name, int index, float pos_model[4]) {
+	float pos_viewModel[4];
+	multMatrixPoint(VIEW, pos_model, pos_viewModel);
+	
+	stringstream ss;
+	ss.str("");
+	ss << name << "[" << index << "]";
+	GLint uniformId = glGetUniformLocation(shader->getProgramIndex(), ss.str().c_str());
+	glUniform3fv(uniformId, 1, pos_viewModel);
 }
 
 void Car::moveSpotLights() {
-	
 	float angleRad = angle * DEG_TO_RAD;
 
 	for (int i = 0; i < NUM_SPOT_LIGHTS; i++) {
@@ -172,31 +186,17 @@ void Car::moveSpotLights() {
 
 		translate(MODEL, getX(), getY(), getZ());
 		rotate(MODEL, getAngle(), 0, 1, 0);
-		translate(MODEL, spotLightPos[i][0], spotLightPos[i][1], spotLightPos[i][2]);
+		translate(MODEL, SPOT_LIGHT_POS[i][0], SPOT_LIGHT_POS[i][1], SPOT_LIGHT_POS[i][2]);
 		
 		// Spotlight position
-
-		float res_m[4];
-		float res_vm[4];
-		multMatrixPoint(MODEL, new float[4]{ 0.0f, 0.0f, 0.0f, 1.0f }, res_m);
-		multMatrixPoint(VIEW, res_m, res_vm);
-
-		stringstream ss;
-		ss.str("");
-		ss << "spotLightPos[" << i << "]";
-		GLint slPos_uniformId = glGetUniformLocation(shader->getProgramIndex(), ss.str().c_str());
-		glUniform3fv(slPos_uniformId, 1, res_vm);
+		float pos[4];
+		multMatrixPoint(MODEL, new float[4]{ 0.0f, 0.0f, 0.0f, 1.0f }, pos);
+		uniformSpotLightPos(shader, "spotLightPos", i, pos);
 
 		// Spotlight end position
-
-		res_m[0] += cos(angleRad);
-		res_m[2] -= sin(angleRad);
-		multMatrixPoint(VIEW, res_m, res_vm);
-		
-		ss.str("");
-		ss << "spotLightEndPos[" << i << "]";
-		GLint coneDir_uniformId = glGetUniformLocation(shader->getProgramIndex(), ss.str().c_str());
-		glUniform3fv(coneDir_uniformId, 1, res_vm);
+		pos[0] += cos(angleRad);
+		pos[2] -= sin(angleRad);
+		uniformSpotLightPos(shader, "spotLightEndPos", i, pos);
 
 		popMatrix(MODEL);
 	}
@@ -237,7 +237,11 @@ void Car::reset() {
 
 	x = 0;
 	z = 0;
+}
 
+void Car::loseLife() {
+	lives->loseLife();
+	reset();
 }
 
 void Car::turnLeft(bool active) {

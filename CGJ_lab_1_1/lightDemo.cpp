@@ -37,6 +37,7 @@
 #include "Candle.h"
 #include "Car.h"
 #include "Cheerio.h"
+#include "Lives.h"
 #include "Orange.h"
 #include "Pawn.h"
 #include "ScreenQuad.h"
@@ -47,7 +48,7 @@
 using namespace std;
 using namespace Utils;
 
-constexpr char CAPTION[] = "Lab 1.1";
+constexpr char CAPTION[] = "Micro Machines";
 int WindowHandle = 0;
 int WinX = 1024, WinY = 768;
 
@@ -72,6 +73,12 @@ float camRatio;
 
 ScreenQuad* pauseQuad;
 
+ScreenQuad* gameOverQuad;
+ScreenQuad* restartQuad;
+
+const int NUM_LIVES = 5;
+Lives* lives;
+
 //External array storage defined in AVTmathLib.cpp
 
 /// The storage for matrices
@@ -87,7 +94,8 @@ GLint normal_uniformId;
 GLint tex_loc[2];
 GLint texMode_uniformId;
 
-GLuint TextureArray[4];
+const int NUM_TEXTURES = 5;
+GLuint TextureArray[NUM_TEXTURES];
 
 int windowWidth = 0;
 int windowHeight = 0;
@@ -135,6 +143,10 @@ bool showTextKey = false;
 bool paused = false;
 bool pausedKey = false;
 
+bool restartKey = false;
+
+bool gameOver = false;
+
 void timer(int value)
 {
 	std::ostringstream oss;
@@ -179,8 +191,10 @@ void changeSize(int w, int h) {
 	windowHeight = h;
 
 	// Update pause quad size and position
-	float scale = fminf(windowWidth, windowHeight);
-	pauseQuad->resize(scale * 1.0f, scale * 0.2f, w, h);
+	pauseQuad->resize(w, h);
+	gameOverQuad->resize(w, h);
+	restartQuad->resize(w, h);
+	lives->resize(w, h);
 
 	// Prevent a divide by zero, when window is too short
 	if (h == 0)
@@ -214,12 +228,6 @@ void updateCarCamera() {
 	popMatrix(MODEL);
 }
 
-
-// ------------------------------------------------------------
-//
-// Render stufff
-//
-
 void setCameraLookAt() {
 	// set the camera using a function similar to gluLookAt
 	switch (cameraProjection) {
@@ -231,6 +239,13 @@ void setCameraLookAt() {
 		updateCarCamera(); break;
 	}
 }
+
+
+// ------------------------------------------------------------
+//
+// Render stufff
+//
+
 
 void renderLights() {
 	GLint loc;
@@ -276,6 +291,8 @@ void renderObject(Object* obj) {
 		}
 		loc = glGetUniformLocation(shader.getProgramIndex(), "mergeTextureWithColor");
 		glUniform1i(loc, part.mesh.mat.mergeTextureWithColor);
+		loc = glGetUniformLocation(shader.getProgramIndex(), "isHUD");
+		glUniform1i(loc, part.mesh.mat.isHUD);
 
 		// send the material
 		loc = glGetUniformLocation(shader.getProgramIndex(), "mat.ambient");
@@ -330,13 +347,21 @@ void renderHUDShapes() {
 
 	pushMatrix(VIEW);
 	loadIdentity(VIEW); //viewer at World origin, looking down at negative z direction
-	ortho(-windowWidth * 0.5f, windowWidth * 0.5f, -windowHeight * 0.5f, windowHeight * 0.5f, -1, 1);
+
+	ortho(-1, 1, -1, 1, -1, 1);
 
 	glDisable(GL_DEPTH_TEST);
 	glDisable(GL_CULL_FACE);
-	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
-	//renderObject(pauseQuad);
+	if (gameOver) {
+		renderObject(gameOverQuad);
+		renderObject(restartQuad);
+	}
+	else if (paused) {
+		renderObject(pauseQuad);
+	}
+
+	renderObject(lives);
 
 	glEnable(GL_DEPTH_TEST);
 	glEnable(GL_CULL_FACE);
@@ -344,6 +369,16 @@ void renderHUDShapes() {
 	popMatrix(MODEL);
 	popMatrix(VIEW);
 	popMatrix(PROJECTION);
+}
+
+void renderTextString(string text, float centerX, float centerY, float scale, float colorR, float colorG, float colorB) {
+	float textScale = scale * windowHeight;
+	float width = stringWidth(text) * textScale;
+	float height = stringHeight(text) * textScale;
+	RenderText(shaderText, text,
+		windowWidth * centerX - width / 2,
+		windowHeight * centerY - height / 2,
+		textScale, colorR, colorG, colorB);
 }
 
 void renderText() {
@@ -368,11 +403,31 @@ void renderText() {
 	RenderText(shaderText, "Speed " + std::to_string(car->getSpeed()), 25.0f, 50.0f, 0.5f, 0.5f, 0.2f, 0.8f);
 	RenderText(shaderText, "Angular speed " + std::to_string(car->getAngularSpeed()), 25.0f, 25.0f, 0.5f, 0.5f, 0.8f, 0.2f);
 	
-	if (paused) {
-		float HUDscale = fminf(windowWidth, windowHeight);
-		
-		RenderText(shaderText, "GAME PAUSED", windowWidth * 0.243f, windowHeight * 0.465f + 0.25f,
-			0.002f * HUDscale, 1.0f, 1.0f, 1.0f);
+	float scale;
+	float width;
+	float height;
+	if (gameOver) {
+		/*scale = 0.003f * windowHeight;
+
+		std::string text = "GAME OVER";
+		width = stringWidth(text) * scale;
+		height = stringHeight(text) * scale;
+		RenderText(shaderText, text, (windowWidth - width) * 0.5f, windowHeight * 0.65f - height * 0.5f,
+			scale, 1.0f, 0.3f, 0.2f);
+
+		scale = 0.0015f * windowHeight;
+
+		text = "Press R to restart.";
+		width = stringWidth(text) * scale;
+		height = stringHeight(text) * scale;
+		RenderText(shaderText, text, (windowWidth - width) * 0.5f, windowHeight * 0.35f - height * 0.5f,
+			scale, 1.0f, 1.0f, 1.0f);
+		*/
+		renderTextString("GAME OVER", 0.5f, 0.65f, 0.003f, 1.0f, 0.3f, 0.2f);
+		renderTextString("Press R to restart.", 0.5f, 0.35f, 0.0015f, 1.0f, 1.0f, 1.0f);
+	}
+	else if (paused) {
+		renderTextString("GAME PAUSED", 0.5f, 0.65f, 0.002f, 1.0f, 1.0f, 1.0f);
 	}
 
 	popMatrix(MODEL);
@@ -383,10 +438,12 @@ void renderText() {
 	glDisable(GL_BLEND);
 }
 
+
+
 void renderScene(void) {
 
 	int currentTime = glutGet(GLUT_ELAPSED_TIME);
-	int deltaTime = paused ? 0 : currentTime - lastTime;
+	int deltaTime = (paused || gameOver) ? 0 : currentTime - lastTime;
 
 	FrameCount++;
 
@@ -418,10 +475,20 @@ void renderScene(void) {
 		renderHUDShapes();
 		renderText();
 	}
+
+	if (lives->areEmpty())
+		gameOver = true;
 	
 	glutSwapBuffers();
 
 	lastTime = currentTime;
+}
+
+void restartGame() {
+	paused = false;
+	gameOver = false;
+	lives->reset();
+	car->reset();
 }
 
 // ------------------------------------------------------------
@@ -487,11 +554,17 @@ void processKeys(unsigned char key, int xx, int yy)
 			showText = !showText;
 		}
 		break;
-
-	case ' ': // text
+	case ' ': // pause
 		if (!pausedKey) {
 			pausedKey = true;
 			paused = !paused;
+		}
+		break;
+	
+	case 'r': // restart
+		if (!pausedKey) {
+			restartKey = true;
+			restartGame();
 		}
 		break;
 	}
@@ -520,6 +593,8 @@ void processKeysUp(unsigned char key, int xx, int yy)
 		showTextKey = false; break;
 	case ' ':
 		pausedKey = false; break;
+	case 'r':
+		restartKey = false; break;
 	}
 }
 
@@ -612,7 +687,7 @@ void mouseWheel(int wheel, int direction, int x, int y) {
 
 		camX = r * sin(alpha * DEG_TO_RAD) * cos(beta * DEG_TO_RAD);
 		camZ = r * cos(alpha * DEG_TO_RAD) * cos(beta * DEG_TO_RAD);
-		camY = r *   						     sin(beta * DEG_TO_RAD);
+		camY = r *   						 sin(beta * DEG_TO_RAD);
 	}
 
 //  uncomment this if not using an idle or refresh func
@@ -667,28 +742,30 @@ GLuint setupShaders() {
 void createScene() {
 	//Texture Object definition
 
-	glGenTextures(4, TextureArray);
+	glGenTextures(NUM_TEXTURES, TextureArray);
 	Texture2D_Loader(TextureArray, "img/stone.tga", STONE_TEX);
 	Texture2D_Loader(TextureArray, "img/lightwood.tga", WOOD_TEX);
-	Texture2D_Loader(TextureArray, "img/checker.png", CHECKERS_TEX);
+	Texture2D_Loader(TextureArray, "img/square-tiled-texture.jpg", CHECKERS_TEX);
 	Texture2D_Loader(TextureArray, "img/orangeTex.png", ORANGE_TEX);
+	Texture2D_Loader(TextureArray, "img/heart.png", LIFE_TEX);
 
-	//createTable();
 	gameObjects.push_back(new Table());
-	
-	car = new Car(&shader, 2.0f, 1.0f);
+
+	lives = new Lives(-0.6f, 0.8f, 0.08f, NUM_LIVES);
+
+	car = new Car(&shader, 2.0f, 1.0f, lives);
 	gameObjects.push_back(car);
 
 	for (int o = 0; o < NUM_ORANGES; o++)
 		gameObjects.push_back(new Orange(car));
 
-	float butterPositions[]{
+	float butterPositions[] {
 		14, 1,
 		19, -0.75f,
 		28, 1
 	};
 
-	float butterSizes[]{
+	float butterSizes[] {
 		2.0f, 1.0f,
 		2.0f, 1.0f,
 		1.0f, 2.0f
@@ -712,7 +789,6 @@ void createScene() {
 		}
 	}
 
-
 	float candlePositions[] {
 		-35.0f, -35.0f,
 		-35.0f, 35.0f,
@@ -728,9 +804,10 @@ void createScene() {
 
 	gameObjects.push_back(new Pawn());
 
-	gameObjects.push_back(new ScreenQuad());
+	pauseQuad = new ScreenQuad(0, 0.3f, 0.15f, 0.2f);
 
-	pauseQuad = new ScreenQuad();
+	gameOverQuad = new ScreenQuad(0, 0.3f, 0.2f, 0.2f);
+	restartQuad = new ScreenQuad(0, -0.3f, 0.1f, 0.15f);
 }
 
 void init()
@@ -751,7 +828,7 @@ void init()
 	camZ = r * cos(alpha * DEG_TO_RAD) * cos(beta * DEG_TO_RAD);
 	camY = r *   						 sin(beta * DEG_TO_RAD);
 
-	cameraProjection = Camera::ORTHOGONAL;
+	cameraProjection = Camera::CAR;
 
 	createScene();
 	
@@ -798,7 +875,7 @@ int main(int argc, char **argv) {
 	glutKeyboardUpFunc(processKeysUp);
 	glutMouseFunc(processMouseButtons);
 	glutMotionFunc(processMouseMotion);
-	glutMouseWheelFunc ( mouseWheel ) ;
+	glutMouseWheelFunc (mouseWheel) ;
 	
 
 //	return from main loop

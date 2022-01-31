@@ -21,10 +21,10 @@ Candle::Candle(float x, float y, float z, float height) {
 		float shininess = 80.0f;
 		int* texIndices = NULL;
 		bool mergeTextureWithColor = false;
-		
 
 		amesh = createCylinder(height, 0.75f, 20);
 		setMeshProperties(&amesh, amb, diff, spec, emissive, shininess, texIndices, mergeTextureWithColor);
+		isMeshCreated = true;
 	}
 	
 	addPart(amesh, x, height / 2, z);

@@ -1,9 +1,10 @@
 #pragma once
 
-#include "Utils.h"
 #include <string>
-#include "constants.h"
 #include <iostream>
+
+#include "Utils.h"
+#include "constants.h"
 
 using namespace Utils;
 using namespace std;
@@ -21,8 +22,7 @@ int countTextures(int texIndices[2]) {
 
 void Utils::setMeshProperties(MyMesh* mesh,
 	float amb[4], float diff[4], float spec[4], float emissive[4], float shininess,
-	int texIndices[2], bool mergeTextureWithColor)
-{
+	int texIndices[2], bool mergeTextureWithColor, bool isHUD) {
 	memcpy(mesh->mat.ambient, amb, 4 * sizeof(float));
 	memcpy(mesh->mat.diffuse, diff, 4 * sizeof(float));
 	memcpy(mesh->mat.specular, spec, 4 * sizeof(float));
@@ -32,4 +32,13 @@ void Utils::setMeshProperties(MyMesh* mesh,
 	if (mesh->mat.texCount > 0)
 		memcpy(mesh->mat.texIndices, texIndices, 2 * sizeof(int));
 	mesh->mat.mergeTextureWithColor = mergeTextureWithColor;
+	mesh->mat.isHUD = isHUD;
+}
+
+void Utils::setMeshProperties(MyMesh* mesh,
+	float amb[4], float diff[4], float spec[4], float emissive[4], float shininess,
+	int texIndices[2], bool mergeTextureWithColor)
+{
+	setMeshProperties(mesh, amb, diff, spec, emissive, shininess,
+		texIndices, mergeTextureWithColor, false);
 }

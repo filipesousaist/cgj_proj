@@ -6,7 +6,7 @@
 
 enum texType {DIFFUSE, SPECULAR, NORMALS, BUMP};
 
-struct Material{
+struct Material {
 	float diffuse[4];
 	float ambient[4];
 	float specular[4];
@@ -15,6 +15,7 @@ struct Material{
 	int texCount;
 	int texIndices[2];
 	bool mergeTextureWithColor;
+	bool isHUD;
 };
 // A model can be made of many meshes. Each is stored  in the following structure
 struct MyMesh {

@@ -38,7 +38,7 @@ public:
 	float getRollAngle() {
 		return rollAngle;
 	}
-	void getRollAxis(float* rollAxis); // By reference
+	//void getRollAxis(float* rollAxis); // By reference
 
 	float getScaleX() {
 		return scaleX;
@@ -72,6 +72,7 @@ protected:
 		float sX, float sY, float sZ);
 	void addPart(MyMesh mesh, float x, float y, float z);
 	void addPart(MyMesh mesh);
+	void removeLastPart();
 
 	virtual void move(int deltaTime) {};
 

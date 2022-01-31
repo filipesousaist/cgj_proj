@@ -8,6 +8,7 @@ uniform sampler2D texmap;
 uniform sampler2D texmap1;
 
 uniform bool mergeTextureWithColor;
+uniform bool isHUD;
 
 uniform bool day;
 uniform bool candles;
@@ -40,6 +41,15 @@ in Data {
 out vec4 colorOut;
 
 void main() {
+	if (isHUD) {
+		if (mat.texCount == 0)
+			colorOut = mat.diffuse;
+		else
+			colorOut = texture(texmap, DataIn.texCoord);
+		if (colorOut.a == 0)
+			discard;
+		return;
+	}
 
 	vec4 texel, texel1; 
 	

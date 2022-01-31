@@ -9,7 +9,6 @@ using namespace std;
 using namespace Utils;
 
 Cheerio::Cheerio(float x, float y, float z, float radius, Car* car) {
-
 	static MyMesh amesh;
 	static bool isMeshCreated = false;
 
@@ -27,11 +26,12 @@ Cheerio::Cheerio(float x, float y, float z, float radius, Car* car) {
 		float spec[] = { 0.15f, 0.15f, 0.15f, 1.0f };
 		float emissive[] = { 0.0f, 0.0f, 0.0f, 1.0f };
 		float shininess = 60.0f;
-		int texIndices[2]{ WOOD_TEX, NO_TEX };
+		int texIndices[2] { WOOD_TEX, NO_TEX };
 		bool mergeTextureWithColor = true;
 
 		amesh = createTorus(radius / 2, radius, 12, 12);
 		setMeshProperties(&amesh, amb, diff, spec, emissive, shininess, texIndices, mergeTextureWithColor);
+		isMeshCreated = true;
 	}
 	addPart(amesh);
 }

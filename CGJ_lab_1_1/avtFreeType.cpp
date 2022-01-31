@@ -162,3 +162,29 @@ void RenderText(VSShaderLib& shaderText, std::string text, float x, float y, flo
 	glBindVertexArray(0);
 	glBindTexture(GL_TEXTURE_2D, 0);
 }
+
+// Custom functions
+
+float stringWidth(std::string text) {
+	float width = 0;
+	std::string::const_iterator c;
+	for (c = text.begin(); c != text.end(); c++)
+	{
+		Character ch = Characters[*c];
+		width += (ch.Advance >> 6);
+	}
+
+	return width;
+}
+
+float stringHeight(std::string text) {
+	float height = 0;
+	std::string::const_iterator c;
+	for (c = text.begin(); c != text.end(); c++)
+	{
+		Character ch = Characters[*c];
+		height = fmaxf(height, ch.Size[1]);
+	}
+
+	return height;
+}

@@ -1,6 +1,10 @@
 #pragma once
-#include "Object.h"
+
 #include <vsShaderLib.h>
+
+#include "Object.h"
+#include "Lives.h"
+
 
 class Car : public Object
 {
@@ -22,6 +26,8 @@ private:
 
 	bool canMoveBack = true;
 	bool canMoveFront = true;
+	
+	Lives* lives;
 
 	void movePosition(int deltaTime);
 	void moveAngle(int deltaTime);
@@ -35,13 +41,17 @@ private:
 	void addSpotLights();
 	
 public:
-	Car::Car(VSShaderLib* shader, float sizeX, float sizeZ);
+	Car::Car(VSShaderLib* shader, float sizeX, float sizeZ, Lives* lives);
 
 	void accelerate(bool active);
 	void accelerateBack(bool active);
 	
 	void stop();
 	void reset();
+
+	void loseLife();
+	void restoreLives();
+	int getNumLives();
 
 	void turnLeft(bool active);
 	void turnRight(bool active);
