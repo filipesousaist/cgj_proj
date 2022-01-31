@@ -42,8 +42,14 @@
 #include "Pawn.h"
 #include "ScreenQuad.h"
 #include "Table.h"
+#include "Tree.h"
+#include "Firework.h"
 #include "constants.h"
+#include "l3DBillboard.h"
 #include "Utils.h"
+#include <flare.h>
+
+#define frand()		((float)rand()/RAND_MAX)
 
 using namespace std;
 using namespace Utils;
@@ -64,6 +70,8 @@ VSShaderLib shaderText;  //render bitmap text
 constexpr char FONT_NAME[] = "fonts/arial.ttf";
 
 vector<Object*> gameObjects;
+vector<Firework*> fireworks;
+int num_dead_particles = 0;
 
 Car* car;
 
@@ -72,6 +80,7 @@ Camera cameraProjection;
 float camRatio;
 
 ScreenQuad* pauseQuad;
+MyMesh flareQuad;
 
 ScreenQuad* gameOverQuad;
 ScreenQuad* restartQuad;
@@ -93,15 +102,23 @@ GLint vm_uniformId;
 GLint normal_uniformId;
 GLint tex_loc[2];
 GLint texMode_uniformId;
+GLint tex_normalMap_loc;
 
-const int NUM_TEXTURES = 5;
+const int NUM_TEXTURES = 8;
 GLuint TextureArray[NUM_TEXTURES];
+
+GLuint FlareTextureArray[5];
 
 int windowWidth = 0;
 int windowHeight = 0;
 
+//Flare effect
+FLARE_DEF AVTflare;
+float lightScreenPos[3];  //Position of the light in Window Coordinates
+
 // Camera Position
 float camX, camY, camZ;
+float camWorld[4];
 
 // Mouse Tracking Variables
 int startX, startY, tracking = 0;
@@ -143,6 +160,23 @@ bool showTextKey = false;
 bool paused = false;
 bool pausedKey = false;
 
+bool flare = false;
+bool flareKey = false;
+
+bool bumpmap = false;
+bool bumpmapKey = false;
+
+bool firework = false;
+bool fireworkKey = false;
+
+inline double clamp(const double x, const double min, const double max) {
+	return (x < min ? min : (x > max ? max : x));
+}
+
+inline int clampi(const int x, const int min, const int max) {
+	return (x < min ? min : (x > max ? max : x));
+}
+
 bool restartKey = false;
 
 bool gameOver = false;
@@ -156,6 +190,74 @@ void timer(int value)
 	glutSetWindowTitle(s.c_str());
     FrameCount = 0;
     glutTimerFunc(1000, timer, 0);
+}
+void initFireworks()
+{
+	for (int i = 0; i < MAX_PARTICLES; i++) {
+		fireworks.push_back(new Firework(0, 7.5f, 0,
+			0.8f * frand() + 0.2f, frand() * PI, 2.0f * frand() * PI));
+	}
+}
+
+void renderFirework(Firework* particle) {
+	glEnable(GL_BLEND);
+	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+	vector<Object::Part>* parts = particle->getParts();
+	particle->updateParticle(0.033f);
+
+	for (const Object::Part& part : *parts) {
+		GLint loc;
+
+		glActiveTexture(GL_TEXTURES[0]);
+		glBindTexture(GL_TEXTURE_2D, TextureArray[PARTICLE_TEX]);
+		glUniform1i(tex_loc[0], 0);
+
+		loc = glGetUniformLocation(shader.getProgramIndex(), "mergeTextureWithColor");
+		glUniform1i(loc, part.mesh.mat.mergeTextureWithColor);
+
+		loc = glGetUniformLocation(shader.getProgramIndex(), "mat.texCount");
+		glUniform1i(loc, -1);
+
+		glDepthMask(GL_FALSE);  //Depth Buffer Read Only
+
+		if (particle->isAlive()) {
+			particle->setDiffuse(0.882, 0.552, 0.211);
+
+
+			loc = glGetUniformLocation(shader.getProgramIndex(), "mat.diffuse");
+			glUniform4fv(loc, 1, particle->getDiffuse());
+
+			float worldPos[3]{ particle->getX(), particle->getY(), particle->getZ() };
+
+			pushMatrix(MODEL);
+			translate(MODEL, particle->getX(), particle->getY(), particle->getZ());
+			if (cameraProjection == Camera::PERSPECTIVE)
+				l3dBillboardSphericalBegin(camWorld, worldPos);
+			else if (cameraProjection == Camera::CAR)
+				l3dBillboardCylindricalBegin(camWorld, worldPos);
+
+			pushMatrix(MODEL);
+			translate(MODEL, particle->getX(), particle->getY(), particle->getZ());
+
+			// send matrices to OGL
+			computeDerivedMatrix(PROJ_VIEW_MODEL);
+			glUniformMatrix4fv(vm_uniformId, 1, GL_FALSE, mCompMatrix[VIEW_MODEL]);
+			glUniformMatrix4fv(pvm_uniformId, 1, GL_FALSE, mCompMatrix[PROJ_VIEW_MODEL]);
+			computeNormalMatrix3x3();
+			glUniformMatrix3fv(normal_uniformId, 1, GL_FALSE, mNormal3x3);
+
+			// Render mesh
+			glBindVertexArray(part.mesh.vao);
+			glDrawElements(part.mesh.type, part.mesh.numIndexes, GL_UNSIGNED_INT, 0);
+			glBindVertexArray(0);
+
+			popMatrix(MODEL);
+			popMatrix(MODEL);
+
+
+		}
+		else num_dead_particles++;
+	}
 }
 
 void refresh(int value)
@@ -190,7 +292,7 @@ void changeSize(int w, int h) {
 	windowWidth = w;
 	windowHeight = h;
 
-	// Update pause quad size and position
+	// Update screen quads' size and position
 	pauseQuad->resize(w, h);
 	gameOverQuad->resize(w, h);
 	restartQuad->resize(w, h);
@@ -212,8 +314,7 @@ void updateCarCamera() {
 	float x = car->getX();
 	float y = car->getY();
 	float z = car->getZ();
-
-	float camWorld[4];
+	
 	float camLocal[4]{ camX, camY, camZ, 1 };
 
 	pushMatrix(MODEL);
@@ -234,18 +335,15 @@ void setCameraLookAt() {
 	case Camera::ORTHOGONAL:
 		lookAt(0, 100, 0, 0, 0, 0, 1, 0, 0); break;
 	case Camera::PERSPECTIVE:
-		lookAt(-66, 30, -66, 0, 0, 0, 0, 1, 0); break;
+		lookAt(-66, 30, -66, 0, 0, 0, 0, 1, 0); 
+		camWorld[0] = -66;
+		camWorld[1] = 30;
+		camWorld[2] = -66;
+		break;
 	case Camera::CAR:
 		updateCarCamera(); break;
 	}
 }
-
-
-// ------------------------------------------------------------
-//
-// Render stufff
-//
-
 
 void renderLights() {
 	GLint loc;
@@ -285,20 +383,43 @@ void renderObject(Object* obj) {
 		GLint loc;
 		// textures
 		for (int t = 0; t < part.mesh.mat.texCount; t++) {
+			glUniform1i(texMode_uniformId, 0);
 			glActiveTexture(GL_TEXTURES[t]);
 			glBindTexture(GL_TEXTURE_2D, TextureArray[part.mesh.mat.texIndices[t]]);
 			glUniform1i(tex_loc[t], t);
+		}
+		if (part.mesh.mat.texIndices[0] == ORANGE_TEX) { //check if it is orange
+			if (bumpmap) {
+				glActiveTexture(GL_TEXTURE1);
+				glBindTexture(GL_TEXTURE_2D, TextureArray[ORANGE_Norm]); //normal.tga
+				glUniform1i(texMode_uniformId, 2);
+				glUniform1i(tex_normalMap_loc, 1);
+			}
 		}
 		loc = glGetUniformLocation(shader.getProgramIndex(), "mergeTextureWithColor");
 		glUniform1i(loc, part.mesh.mat.mergeTextureWithColor);
 		loc = glGetUniformLocation(shader.getProgramIndex(), "isHUD");
 		glUniform1i(loc, part.mesh.mat.isHUD);
 
+		if (part.mesh.mat.texIndices[0] == TREE_TEX) {
+			float worldPos[3]{ part.position[0], part.position[1], part.position[2] };
+
+			pushMatrix(MODEL);
+			translate(MODEL, part.position[0], part.position[1], part.position[2]);
+			if (cameraProjection == Camera::PERSPECTIVE)
+				l3dBillboardSphericalBegin(camWorld, worldPos);
+			else if (cameraProjection == Camera::CAR)
+				l3dBillboardCylindricalBegin(camWorld, worldPos);
+
+		}
+
 		// send the material
-		loc = glGetUniformLocation(shader.getProgramIndex(), "mat.ambient");
-		glUniform4fv(loc, 1, part.mesh.mat.ambient);
-		loc = glGetUniformLocation(shader.getProgramIndex(), "mat.diffuse");
-		glUniform4fv(loc, 1, part.mesh.mat.diffuse);
+		if (part.mesh.mat.texIndices[0] != TREE_TEX) {
+			loc = glGetUniformLocation(shader.getProgramIndex(), "mat.ambient");
+			glUniform4fv(loc, 1, part.mesh.mat.ambient);
+			loc = glGetUniformLocation(shader.getProgramIndex(), "mat.diffuse");
+			glUniform4fv(loc, 1, part.mesh.mat.diffuse);
+		}
 		loc = glGetUniformLocation(shader.getProgramIndex(), "mat.specular");
 		glUniform4fv(loc, 1, part.mesh.mat.specular);
 		loc = glGetUniformLocation(shader.getProgramIndex(), "mat.shininess");
@@ -307,14 +428,15 @@ void renderObject(Object* obj) {
 		glUniform1i(loc, part.mesh.mat.texCount);
 		pushMatrix(MODEL);
 
-		translate(MODEL, obj->getX(), obj->getY(), obj->getZ());
-		rotate(MODEL, obj->getAngle(), 0, 1, 0);
-		rotate(MODEL, obj->getRollAngle(), 0, 0, -1);
-		scale(MODEL, obj->getScaleX(), obj->getScaleY(), obj->getScaleZ());
-		translate(MODEL, part.position[0], part.position[1], part.position[2]);
-		rotate(MODEL, part.angle, part.rotationAxis[0], part.rotationAxis[1], part.rotationAxis[2]);
-		scale(MODEL, part.scale[0], part.scale[1], part.scale[2]);
-
+		if (part.mesh.mat.texIndices[0] != TREE_TEX) {
+			translate(MODEL, obj->getX(), obj->getY(), obj->getZ());
+			rotate(MODEL, obj->getAngle(), 0, 1, 0);
+			rotate(MODEL, obj->getRollAngle(), 0, 0, -1);
+			scale(MODEL, obj->getScaleX(), obj->getScaleY(), obj->getScaleZ());
+			translate(MODEL, part.position[0], part.position[1], part.position[2]);
+			rotate(MODEL, part.angle, part.rotationAxis[0], part.rotationAxis[1], part.rotationAxis[2]);
+			scale(MODEL, part.scale[0], part.scale[1], part.scale[2]);
+		}
 		// send matrices to OGL
 		computeDerivedMatrix(PROJ_VIEW_MODEL);
 		glUniformMatrix4fv(vm_uniformId, 1, GL_FALSE, mCompMatrix[VIEW_MODEL]);
@@ -333,7 +455,97 @@ void renderObject(Object* obj) {
 		glBindVertexArray(0);
 
 		popMatrix(MODEL);
+
+		if (part.mesh.mat.texIndices[0] == TREE_TEX)
+			popMatrix(MODEL);
 	}
+}
+
+void render_flare(FLARE_DEF* flare, int lx, int ly, int* m_viewport) {
+	int     dx, dy;          // Screen coordinates of "destination"
+	int     px, py;          // Screen coordinates of flare element
+	int		cx, cy;
+	float    maxflaredist, flaredist, flaremaxsize, flarescale, scaleDistance;
+	int     width, height, alpha;    // Piece parameters;
+	int     i;
+	float	diffuse[4];
+
+	GLint loc;
+
+	glDisable(GL_DEPTH_TEST);
+	glDisable(GL_CULL_FACE);
+	glEnable(GL_BLEND);
+	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
+	int screenMaxCoordX = m_viewport[0] + m_viewport[2] - 1;
+	int screenMaxCoordY = m_viewport[1] + m_viewport[3] - 1;
+
+	//viewport center
+	cx = m_viewport[0] + (int)(0.5f * (float)m_viewport[2]) - 1;
+	cy = m_viewport[1] + (int)(0.5f * (float)m_viewport[3]) - 1;
+
+	// Compute how far off-center the flare source is.
+	maxflaredist = sqrt(cx * cx + cy * cy);
+	flaredist = sqrt((lx - cx) * (lx - cx) + (ly - cy) * (ly - cy));
+	scaleDistance = (maxflaredist - flaredist) / maxflaredist;
+	flaremaxsize = (int)(m_viewport[2] * flare->fMaxSize);
+	flarescale = (int)(m_viewport[2] * flare->fScale);
+
+	// Destination is opposite side of centre from source
+	dx = clampi(cx + (cx - lx), m_viewport[0], screenMaxCoordX);
+	dy = clampi(cy + (cy - ly), m_viewport[1], screenMaxCoordY);
+
+	// Render each element. To be used Texture Unit 0
+
+	//glUniform1i(texMode_uniformId, 3); // draw modulated textured particles 
+	glUniform1i(tex_loc[0], 0);  //use TU 0
+
+	for (i = 0; i < flare->nPieces; ++i)
+	{
+		// Position is interpolated along line between start and destination.
+		px = (int)((1.0f - flare->element[i].fDistance) * lx + flare->element[i].fDistance * dx);
+		py = (int)((1.0f - flare->element[i].fDistance) * ly + flare->element[i].fDistance * dy);
+		px = clampi(px, m_viewport[0], screenMaxCoordX);
+		py = clampi(py, m_viewport[1], screenMaxCoordY);
+
+		// Piece size are 0 to 1; flare size is proportion of screen width; scale by flaredist/maxflaredist.
+		width = (int)(scaleDistance * flarescale * flare->element[i].fSize);
+
+		// Width gets clamped, to allows the off-axis flaresto keep a good size without letting the elements get big when centered.
+		if (width > flaremaxsize)  width = flaremaxsize;
+
+		height = (int)((float)m_viewport[3] / (float)m_viewport[2] * (float)width);
+		memcpy(diffuse, flare->element[i].matDiffuse, 4 * sizeof(float));
+		diffuse[3] *= scaleDistance;   //scale the alpha channel
+
+		if (width > 1)
+		{
+			// send the material - diffuse color modulated with texture
+			loc = glGetUniformLocation(shader.getProgramIndex(), "mat.diffuse");
+			glUniform4fv(loc, 1, diffuse);
+			loc = glGetUniformLocation(shader.getProgramIndex(), "mat.texCount");
+			glUniform1i(loc, -1);
+
+			glActiveTexture(GL_TEXTURE0);
+			glBindTexture(GL_TEXTURE_2D, FlareTextureArray[flare->element[i].textureId]);
+			pushMatrix(MODEL);
+			translate(MODEL, (float)(px - width * 0.0f), (float)(py - height * 0.0f), 0.0f);
+			scale(MODEL, (float)width, (float)height, 1);
+			computeDerivedMatrix(PROJ_VIEW_MODEL);
+			glUniformMatrix4fv(vm_uniformId, 1, GL_FALSE, mCompMatrix[VIEW_MODEL]);
+			glUniformMatrix4fv(pvm_uniformId, 1, GL_FALSE, mCompMatrix[PROJ_VIEW_MODEL]);
+			computeNormalMatrix3x3();
+			glUniformMatrix3fv(normal_uniformId, 1, GL_FALSE, mNormal3x3);
+
+			glBindVertexArray(flareQuad.vao);
+			glDrawElements(flareQuad.type, flareQuad.numIndexes, GL_UNSIGNED_INT, 0);
+			glBindVertexArray(0);
+			popMatrix(MODEL);
+		}
+	}
+	glEnable(GL_DEPTH_TEST);
+	glEnable(GL_CULL_FACE);
+	//glDisable(GL_BLEND);
 }
 
 void renderHUDShapes() {
@@ -471,6 +683,46 @@ void renderScene(void) {
 	for (Object* obj : gameObjects)
 		obj->handleCollision();
 
+	if (firework) {
+		for (Firework* particle : fireworks)
+			renderFirework(particle);
+
+		glDepthMask(GL_TRUE);  //Depth Buffer Read Only
+		if (num_dead_particles == MAX_PARTICLES) {
+			firework = false;
+			num_dead_particles = 0;
+			fireworks.clear();
+			printf("All particles dead\n");
+		}
+
+	}
+
+	if (flare && candles) {
+		int flarePos[2];
+		int m_viewport[4];
+		glGetIntegerv(GL_VIEWPORT, m_viewport);
+
+		pushMatrix(MODEL);
+		loadIdentity(MODEL);
+		computeDerivedMatrix(PROJ_VIEW_MODEL);  //pvm to be applied to lightPost. pvm is used in project function
+
+		if (!project(pointLightPos[0], lightScreenPos, m_viewport))
+			printf("Error in getting projected light in screen\n");  //Calculate the window Coordinates of the light position: the projected position of light on viewport
+		flarePos[0] = clampi((int)lightScreenPos[0], m_viewport[0], m_viewport[0] + m_viewport[2] - 1);
+		flarePos[1] = clampi((int)lightScreenPos[1], m_viewport[1], m_viewport[1] + m_viewport[3] - 1);
+		popMatrix(MODEL);
+
+		//viewer looking down at  negative z direction
+		pushMatrix(PROJECTION);
+		loadIdentity(PROJECTION);
+		pushMatrix(VIEW);
+		loadIdentity(VIEW);
+		ortho(m_viewport[0], m_viewport[0] + m_viewport[2] - 1, m_viewport[1], m_viewport[1] + m_viewport[3] - 1, -1, 1);
+		render_flare(&AVTflare, flarePos[0], flarePos[1], m_viewport);
+		popMatrix(PROJECTION);
+		popMatrix(VIEW);
+	}
+
 	if (showText) {
 		renderHUDShapes();
 		renderText();
@@ -561,6 +813,35 @@ void processKeys(unsigned char key, int xx, int yy)
 		}
 		break;
 	
+	case 'k': //fireworks
+		if (!fireworkKey) {
+			if (firework) {
+				firework = false;
+				fireworks.clear();
+			}
+			else {
+				initFireworks();
+				fireworkKey = true;
+				firework = true;
+			}
+		}
+		break;
+	
+	case 'g': // flare
+		if (candlesKey) flare = false;
+		else
+			if (flare) {
+				flare = false;
+
+			}
+			else flare = true;
+		break;
+
+	case 'b': // bumpmap
+		if (bumpmap) bumpmap = false;
+		else bumpmap = true;
+		break;
+	
 	case 'r': // restart
 		if (!pausedKey) {
 			restartKey = true;
@@ -593,6 +874,10 @@ void processKeysUp(unsigned char key, int xx, int yy)
 		showTextKey = false; break;
 	case ' ':
 		pausedKey = false; break;
+	case 'g':
+		flareKey = false; break;
+	case 'k':
+		fireworkKey = false; break;
 	case 'r':
 		restartKey = false; break;
 	}
@@ -710,6 +995,8 @@ GLuint setupShaders() {
 	glBindFragDataLocation(shader.getProgramIndex(), 0, "colorOut");
 	glBindAttribLocation(shader.getProgramIndex(), VERTEX_COORD_ATTRIB, "position");
 	glBindAttribLocation(shader.getProgramIndex(), NORMAL_ATTRIB, "normal");
+	glBindAttribLocation(shader.getProgramIndex(), TANGENT_ATTRIB, "tangent");
+
 	//glBindAttribLocation(shader.getProgramIndex(), TEXTURE_COORD_ATTRIB, "texCoord");
 
 	glLinkProgram(shader.getProgramIndex());
@@ -720,6 +1007,7 @@ GLuint setupShaders() {
 	normal_uniformId = glGetUniformLocation(shader.getProgramIndex(), "m_normal");
 	tex_loc[0] = glGetUniformLocation(shader.getProgramIndex(), "texmap");
 	tex_loc[1] = glGetUniformLocation(shader.getProgramIndex(), "texmap1");
+	tex_normalMap_loc = glGetUniformLocation(shader.getProgramIndex(), "normalMap");
 
 	std::printf("InfoLog for Per Fragment Phong Lightning Shader\n%s\n\n", shader.getAllInfoLogs().c_str());
 
@@ -747,8 +1035,20 @@ void createScene() {
 	Texture2D_Loader(TextureArray, "img/lightwood.tga", WOOD_TEX);
 	Texture2D_Loader(TextureArray, "img/square-tiled-texture.jpg", CHECKERS_TEX);
 	Texture2D_Loader(TextureArray, "img/orangeTex.png", ORANGE_TEX);
+	Texture2D_Loader(TextureArray, "img/Orange_001_NORM.jpg", ORANGE_Norm);
+	Texture2D_Loader(TextureArray, "img/tree.tga", TREE_TEX);
+	Texture2D_Loader(TextureArray, "img/particle.tga", PARTICLE_TEX);
 	Texture2D_Loader(TextureArray, "img/heart.png", LIFE_TEX);
 
+	//Flare elements textures
+	glGenTextures(5, FlareTextureArray);
+	Texture2D_Loader(FlareTextureArray, "img/crcl.tga", 0);
+	Texture2D_Loader(FlareTextureArray, "img/flar.tga", 1);
+	Texture2D_Loader(FlareTextureArray, "img/hxgn.tga", 2);
+	Texture2D_Loader(FlareTextureArray, "img/ring.tga", 3);
+	Texture2D_Loader(FlareTextureArray, "img/sun.tga", 4);
+
+	//createTable();
 	gameObjects.push_back(new Table());
 
 	lives = new Lives(-0.6f, 0.8f, 0.08f, NUM_LIVES);
@@ -802,10 +1102,20 @@ void createScene() {
 		gameObjects.push_back(new Candle(
 			candlePositions[2 * i], 0, candlePositions[2 * i + 1], 3.5f));
 
+	gameObjects.push_back(new Tree(0, 2.5f, 25));
+	gameObjects.push_back(new Tree(0, 2.5f, -25));
+
 	gameObjects.push_back(new Pawn());
 
 	pauseQuad = new ScreenQuad(0, 0.3f, 0.15f, 0.2f);
+	pauseQuad = new ScreenQuad();
 
+	// create geometry and VAO of the quad for flare elements
+	flareQuad = createQuad(1, 1);
+	flareQuad.mat.texCount = 1;
+
+	//Load flare from file
+	loadFlareFile(&AVTflare, "flare.txt");
 	gameOverQuad = new ScreenQuad(0, 0.3f, 0.2f, 0.2f);
 	restartQuad = new ScreenQuad(0, -0.3f, 0.1f, 0.15f);
 }
@@ -875,7 +1185,7 @@ int main(int argc, char **argv) {
 	glutKeyboardUpFunc(processKeysUp);
 	glutMouseFunc(processMouseButtons);
 	glutMotionFunc(processMouseMotion);
-	glutMouseWheelFunc (mouseWheel) ;
+	glutMouseWheelFunc(mouseWheel);
 	
 
 //	return from main loop
@@ -899,6 +1209,60 @@ int main(int argc, char **argv) {
 	glutMainLoop();
 
 	return(0);
+}
+
+unsigned int getTextureId(char* name) {
+	int i;
+
+	for (i = 0; i < NTEXTURES; ++i)
+	{
+		if (strncmp(name, flareTextureNames[i], strlen(name)) == 0)
+			return i;
+	}
+	return -1;
+}
+void    loadFlareFile(FLARE_DEF* flare, char* filename)
+{
+	int     n = 0;
+	FILE* f;
+	char    buf[256];
+	int fields;
+
+	memset(flare, 0, sizeof(FLARE_DEF));
+
+	f = fopen(filename, "r");
+	if (f)
+	{
+		fgets(buf, sizeof(buf), f);
+		sscanf(buf, "%f %f", &flare->fScale, &flare->fMaxSize);
+
+		while (!feof(f))
+		{
+			char            name[8] = { '\0', };
+			double          dDist = 0.0, dSize = 0.0;
+			float			color[4];
+			int				id;
+
+			fgets(buf, sizeof(buf), f);
+			fields = sscanf(buf, "%4s %lf %lf ( %f %f %f %f )", name, &dDist, &dSize, &color[3], &color[0], &color[1], &color[2]);
+			if (fields == 7)
+			{
+				for (int i = 0; i < 4; ++i) color[i] = clamp(color[i] / 255.0f, 0.0f, 1.0f);
+				id = getTextureId(name);
+				if (id < 0) printf("Texture name not recognized\n");
+				else
+					flare->element[n].textureId = id;
+				flare->element[n].fDistance = (float)dDist;
+				flare->element[n].fSize = (float)dSize;
+				memcpy(flare->element[n].matDiffuse, color, 4 * sizeof(float));
+				++n;
+			}
+		}
+
+		flare->nPieces = n;
+		fclose(f);
+	}
+	else printf("Flare file opening error\n");
 }
 
 

@@ -15,6 +15,12 @@ uniform bool candles;
 uniform bool headlights;
 uniform bool fog;
 
+// bumpmap
+uniform mat3 m_normal;
+uniform int texMode;
+in vec4 fragTan;
+uniform sampler2D normalMap;
+
 struct Materials {
 	vec4 diffuse;
 	vec4 ambient;
@@ -52,22 +58,44 @@ void main() {
 	}
 
 	vec4 texel, texel1; 
+
+	vec3 t, b, aux, eyeDir, new_n;
 	
 	vec4 totalSpecular = vec4(0.0);
 	vec4 totalDiffuse = vec4(0.0);
 
 	vec3 n = normalize(DataIn.normal);
 	vec3 e = normalize(DataIn.eye);
-
+	eyeDir = e;
+	new_n = n;
 	// Directional light
 	if (day){
 		vec3 dl = normalize(directionalLightPos - DataIn.pos);
-		float diffuse = max(dot(n,dl), 0.0);
+
+		if(texMode == 2)  {
+			//Calculate components of TBN basis in eye space
+			t = normalize(m_normal * fragTan.xyz);  
+			b = fragTan.w * cross(n,t);
+
+			aux.x = dot(dl, t);
+			aux.y = dot(dl, b);
+			aux.z = dot(dl, n);
+			dl = normalize(aux);
+
+			aux.x = dot(eyeDir, t);
+			aux.y = dot(eyeDir, b);
+			aux.z = dot(eyeDir, n);
+			eyeDir = normalize(aux);
+
+			new_n = normalize(2.0 * texture(normalMap, DataIn.texCoord).rgb - 1.0);
+		}
+
+		float diffuse = max(dot(new_n, dl), 0.0);
 	
 		if (diffuse > 0.0) {
 			totalDiffuse += diffuse;
-			vec3 h = normalize(dl + e);
-			float intSpecular = max(dot(h,n), 0.0);
+			vec3 h = normalize(dl + eyeDir);
+			float intSpecular = max(dot(h,new_n), 0.0);
 			totalSpecular += pow(intSpecular, mat.shininess);
 		}
 	}
@@ -82,14 +110,32 @@ void main() {
 			vec3 posToPointLight = pointLightPos[i] - DataIn.pos;
 			float dist = length(posToPointLight);
 			vec3 l = normalize(posToPointLight);
+
+			if(texMode == 2)  {
+				//Calculate components of TBN basis in eye space
+				t = normalize(m_normal * fragTan.xyz);  
+				b = fragTan.w * cross(n,t);
+
+				aux.x = dot(l, t);
+				aux.y = dot(l, b);
+				aux.z = dot(l, n);
+				l = normalize(aux);
+
+				aux.x = dot(eyeDir, t);
+				aux.y = dot(eyeDir, b);
+				aux.z = dot(eyeDir, n);
+				eyeDir = normalize(aux);
+
+				new_n = normalize(2.0 * texture(normalMap, DataIn.texCoord).rgb - 1.0);
+			}
 			
 			float point_intensity = POINT_INTENSITY / (1 + POINT_LINEAR_ATT * dist + POINT_QUADRATIC_ATT * dist * dist);
-			float diffuse = max(dot(n,l), 0.0) * point_intensity;
+			float diffuse = max(dot(new_n,l), 0.0) * point_intensity;
 		
 			if (diffuse > 0.0) {
 				totalDiffuse += diffuse; //* vec4(0.5, 0.5, 0.5, 1.0);
-				vec3 h = normalize(l + e);
-				float intSpecular = max(dot(h,n), 0.0);
+				vec3 h = normalize(l + eyeDir);
+				float intSpecular = max(dot(h,new_n), 0.0);
 				totalSpecular += pow(intSpecular, mat.shininess) * point_intensity;
 			}
 		}
@@ -108,17 +154,39 @@ void main() {
 			float dist = length(posToSpotLight);
 			vec3 sl = normalize(posToSpotLight);
 			vec3 coneDir = normalize(spotLightPos[i] - spotLightEndPos[i]);
+			if(texMode == 2)  {
+				//Calculate components of TBN basis in eye space
+				t = normalize(m_normal * fragTan.xyz);  
+				b = fragTan.w * cross(n,t);
 
+				aux.x = dot(sl, t);
+				aux.y = dot(sl, b);
+				aux.z = dot(sl, n);
+				sl = normalize(aux);
+				
+				aux.x = dot(coneDir, t);
+				aux.y = dot(coneDir, b);
+				aux.z = dot(coneDir, n);
+				coneDir = normalize(aux);
+
+				aux.x = dot(eyeDir, t);
+				aux.y = dot(eyeDir, b);
+				aux.z = dot(eyeDir, n);
+				eyeDir = normalize(aux);
+
+				new_n = normalize(2.0 * texture(normalMap, DataIn.texCoord).rgb - 1.0);
+			}
+			
 			float spotCos = dot(sl, coneDir);
 
 			if (spotCos > SPOT_COS_CUTOFF) { //inside cone?
 				float spot_intensity = SPOT_INTENSITY / (1 + SPOT_LINEAR_ATT * dist + SPOT_QUADRATIC_ATT * dist * dist);
-				float diffuse = max(dot(n, sl), 0.0) * spot_intensity;
+				float diffuse = max(dot(new_n, sl), 0.0) * spot_intensity;
 
 				if (diffuse > 0.0) {
 					totalDiffuse += diffuse;
-					vec3 h = normalize(sl + e);
-					float intSpecular = max(dot(h,n), 0.0);
+					vec3 h = normalize(sl + eyeDir);
+					float intSpecular = max(dot(h,new_n), 0.0);
 					totalSpecular += pow(intSpecular, mat.shininess) * spot_intensity;
 				}
 			}
@@ -133,10 +201,19 @@ void main() {
 	else if (mat.texCount == 1) 
 	{
 		texel = texture(texmap, DataIn.texCoord);
-		if (mergeTextureWithColor) // mix 
+		if (texel.a <= 0.1) discard;
+		else if (mergeTextureWithColor) // mix 
 			colorOut = max(finalDiffuse * texel + finalSpecular, mat.ambient * texel);
 		else // diffuse color is replaced by texel color, with specular area or ambient (0.07 * texel)
 			colorOut = max(totalDiffuse * texel + finalSpecular, 0.07 * texel);
+		
+	}
+	else if (mat.texCount == -1) // modulated texture for particle
+	{
+		texel = texture(texmap, DataIn.texCoord);  //texel from element flare texture
+		if((texel.a == 0.0)  || (mat.diffuse.a == 0.0) ) discard;
+		else
+			colorOut = mat.diffuse * texel;
 	}
 	else // multitexturing
 	{
