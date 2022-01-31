@@ -20,6 +20,9 @@ uniform int texMode;
 in vec4 fragTan;
 uniform sampler2D normalMap;
 
+uniform samplerCube skyBoxMap;
+in vec3 skyboxTexCoord;
+
 uniform bool particle;
 
 struct Materials {
@@ -189,7 +192,14 @@ void main() {
 	vec4 finalSpecular = mat.specular * totalSpecular;
 
 	if (mat.texCount == 0) // plain color
-		colorOut = max(finalDiffuse + finalSpecular, mat.ambient);
+		if (texMode == 3) //SkyBox
+		{
+			colorOut = texture(skyBoxMap, skyboxTexCoord);
+			return;
+
+		}else{
+			colorOut = max(finalDiffuse + finalSpecular, mat.ambient);
+		}
 	else if (mat.texCount == 1) 
 	{
 		texel = texture(texmap, DataIn.texCoord);

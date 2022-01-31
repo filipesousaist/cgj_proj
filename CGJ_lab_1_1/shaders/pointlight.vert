@@ -2,7 +2,7 @@
 
 uniform mat4 m_pvm;
 uniform mat4 m_viewModel;
-uniform mat4 m_model;
+uniform mat4 m_Model;   //por causa do cubo para a skybox
 uniform mat3 m_normal;
 
 in vec4 position;
@@ -10,6 +10,7 @@ in vec4 normal;    //por causa do gerador de geometria
 in vec4 texCoord;
 in vec4 tangent;
 out vec4 fragTan;
+out vec3 skyboxTexCoord;
 
 out Data {
 	vec3 pos;
@@ -24,6 +25,8 @@ void main () {
 	DataOut.normal = normalize(m_normal * normal.xyz);
 	DataOut.eye = -DataOut.pos;
 	DataOut.texCoord = texCoord.st;
+	skyboxTexCoord = vec3(m_Model * position);	//Transformação de modelação do cubo unitário 
+	skyboxTexCoord.x = - skyboxTexCoord.x; //Texturas mapeadas no interior logo negar a coordenada x
 
 	fragTan = tangent;
 	gl_Position = m_pvm * position;
