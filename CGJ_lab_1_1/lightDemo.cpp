@@ -47,12 +47,14 @@
 #include "constants.h"
 #include "l3DBillboard.h"
 #include "Utils.h"
+#include "MathUtils.h"
 #include <flare.h>
 
 #define frand()		((float)rand()/RAND_MAX)
 
 using namespace std;
 using namespace Utils;
+using namespace MathUtils;
 
 constexpr char CAPTION[] = "Micro Machines";
 int WindowHandle = 0;
@@ -107,14 +109,15 @@ GLint tex_normalMap_loc;
 const int NUM_TEXTURES = 8;
 GLuint TextureArray[NUM_TEXTURES];
 
-GLuint FlareTextureArray[5];
-
-int windowWidth = 0;
-int windowHeight = 0;
+const int NUM_FLARE_TEXTURES = 5;
+GLuint FlareTextureArray[NUM_FLARE_TEXTURES];
 
 //Flare effect
 FLARE_DEF AVTflare;
 float lightScreenPos[3];  //Position of the light in Window Coordinates
+
+int windowWidth = 0;
+int windowHeight = 0;
 
 // Camera Position
 float camX, camY, camZ;
@@ -367,7 +370,7 @@ void renderLights() {
 
 	for (int i = 0; i < NUM_POINT_LIGHTS; i++) {
 		float res[4];
-		multMatrixPoint(VIEW, pointLightPos[i], res);   //lightPos definido em World Coord so is converted to eye space
+		multMatrixPoint(VIEW, pointLightPos[i], res);
 		stringstream ss;
 		ss.str("");
 		ss << "pointLightPos[" << i << "]";
@@ -615,26 +618,7 @@ void renderText() {
 	RenderText(shaderText, "Speed " + std::to_string(car->getSpeed()), 25.0f, 50.0f, 0.5f, 0.5f, 0.2f, 0.8f);
 	RenderText(shaderText, "Angular speed " + std::to_string(car->getAngularSpeed()), 25.0f, 25.0f, 0.5f, 0.5f, 0.8f, 0.2f);
 	
-	float scale;
-	float width;
-	float height;
 	if (gameOver) {
-		/*scale = 0.003f * windowHeight;
-
-		std::string text = "GAME OVER";
-		width = stringWidth(text) * scale;
-		height = stringHeight(text) * scale;
-		RenderText(shaderText, text, (windowWidth - width) * 0.5f, windowHeight * 0.65f - height * 0.5f,
-			scale, 1.0f, 0.3f, 0.2f);
-
-		scale = 0.0015f * windowHeight;
-
-		text = "Press R to restart.";
-		width = stringWidth(text) * scale;
-		height = stringHeight(text) * scale;
-		RenderText(shaderText, text, (windowWidth - width) * 0.5f, windowHeight * 0.35f - height * 0.5f,
-			scale, 1.0f, 1.0f, 1.0f);
-		*/
 		renderTextString("GAME OVER", 0.5f, 0.65f, 0.003f, 1.0f, 0.3f, 0.2f);
 		renderTextString("Press R to restart.", 0.5f, 0.35f, 0.0015f, 1.0f, 1.0f, 1.0f);
 	}
@@ -649,7 +633,6 @@ void renderText() {
 	glEnable(GL_DEPTH_TEST);
 	glDisable(GL_BLEND);
 }
-
 
 
 void renderScene(void) {
@@ -694,7 +677,6 @@ void renderScene(void) {
 			fireworks.clear();
 			printf("All particles dead\n");
 		}
-
 	}
 
 	if (flare && candles) {
@@ -708,8 +690,8 @@ void renderScene(void) {
 
 		if (!project(pointLightPos[0], lightScreenPos, m_viewport))
 			printf("Error in getting projected light in screen\n");  //Calculate the window Coordinates of the light position: the projected position of light on viewport
-		flarePos[0] = clampi((int)lightScreenPos[0], m_viewport[0], m_viewport[0] + m_viewport[2] - 1);
-		flarePos[1] = clampi((int)lightScreenPos[1], m_viewport[1], m_viewport[1] + m_viewport[3] - 1);
+		flarePos[0] = clampI((int) lightScreenPos[0], m_viewport[0], m_viewport[0] + m_viewport[2] - 1);
+		flarePos[1] = clampI((int) lightScreenPos[1], m_viewport[1], m_viewport[1] + m_viewport[3] - 1);
 		popMatrix(MODEL);
 
 		//viewer looking down at  negative z direction
@@ -828,18 +810,17 @@ void processKeys(unsigned char key, int xx, int yy)
 		break;
 	
 	case 'g': // flare
-		if (candlesKey) flare = false;
-		else
-			if (flare) {
-				flare = false;
-
-			}
-			else flare = true;
+		if (!flareKey) {
+			flareKey = true;
+			flare = !flare;
+		}
 		break;
 
 	case 'b': // bumpmap
-		if (bumpmap) bumpmap = false;
-		else bumpmap = true;
+		if (!bumpmapKey) {
+			bumpmapKey = true;
+			bumpmap = !bumpmap;
+		}
 		break;
 	
 	case 'r': // restart
@@ -878,6 +859,8 @@ void processKeysUp(unsigned char key, int xx, int yy)
 		flareKey = false; break;
 	case 'k':
 		fireworkKey = false; break;
+	case 'b':
+		bumpmapKey = false; break;
 	case 'r':
 		restartKey = false; break;
 	}
@@ -1041,7 +1024,7 @@ void createScene() {
 	Texture2D_Loader(TextureArray, "img/heart.png", LIFE_TEX);
 
 	//Flare elements textures
-	glGenTextures(5, FlareTextureArray);
+	glGenTextures(NUM_FLARE_TEXTURES, FlareTextureArray);
 	Texture2D_Loader(FlareTextureArray, "img/crcl.tga", 0);
 	Texture2D_Loader(FlareTextureArray, "img/flar.tga", 1);
 	Texture2D_Loader(FlareTextureArray, "img/hxgn.tga", 2);
@@ -1108,7 +1091,8 @@ void createScene() {
 	gameObjects.push_back(new Pawn());
 
 	pauseQuad = new ScreenQuad(0, 0.3f, 0.15f, 0.2f);
-	pauseQuad = new ScreenQuad();
+	gameOverQuad = new ScreenQuad(0, 0.3f, 0.2f, 0.2f);
+	restartQuad = new ScreenQuad(0, -0.3f, 0.1f, 0.15f);
 
 	// create geometry and VAO of the quad for flare elements
 	flareQuad = createQuad(1, 1);
@@ -1116,8 +1100,6 @@ void createScene() {
 
 	//Load flare from file
 	loadFlareFile(&AVTflare, "flare.txt");
-	gameOverQuad = new ScreenQuad(0, 0.3f, 0.2f, 0.2f);
-	restartQuad = new ScreenQuad(0, -0.3f, 0.1f, 0.15f);
 }
 
 void init()
@@ -1212,20 +1194,16 @@ int main(int argc, char **argv) {
 }
 
 unsigned int getTextureId(char* name) {
-	int i;
-
-	for (i = 0; i < NTEXTURES; ++i)
-	{
+	for (int i = 0; i < NTEXTURES; ++ i)
 		if (strncmp(name, flareTextureNames[i], strlen(name)) == 0)
 			return i;
-	}
 	return -1;
 }
-void    loadFlareFile(FLARE_DEF* flare, char* filename)
+void loadFlareFile(FLARE_DEF* flare, char* filename)
 {
-	int     n = 0;
+	int n = 0;
 	FILE* f;
-	char    buf[256];
+	char buf[256];
 	int fields;
 
 	memset(flare, 0, sizeof(FLARE_DEF));
@@ -1238,16 +1216,16 @@ void    loadFlareFile(FLARE_DEF* flare, char* filename)
 
 		while (!feof(f))
 		{
-			char            name[8] = { '\0', };
-			double          dDist = 0.0, dSize = 0.0;
-			float			color[4];
-			int				id;
+			char    name[8] = { '\0', };
+			double  dDist = 0.0, dSize = 0.0;
+			float   color[4];
+			int     id;
 
 			fgets(buf, sizeof(buf), f);
 			fields = sscanf(buf, "%4s %lf %lf ( %f %f %f %f )", name, &dDist, &dSize, &color[3], &color[0], &color[1], &color[2]);
 			if (fields == 7)
 			{
-				for (int i = 0; i < 4; ++i) color[i] = clamp(color[i] / 255.0f, 0.0f, 1.0f);
+				for (int i = 0; i < 4; ++i) color[i] = clampD(color[i] / 255.0f, 0.0f, 1.0f);
 				id = getTextureId(name);
 				if (id < 0) printf("Texture name not recognized\n");
 				else

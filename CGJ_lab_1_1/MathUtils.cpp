@@ -1,12 +1,23 @@
 #include "MathUtils.h"
 #include <math.h>
 #include <limits>
+#include <algorithm>
 
 using namespace std;
 
-float MathUtils::clamp(float n, float min, float max)
+int MathUtils::clampI(int n, int minN, int maxN)
 {
-	return fmaxf(min, fminf(max, n));
+	return max(minN, min(maxN, n));
+}
+
+float MathUtils::clampF(float n, float minN, float maxN)
+{
+	return fmaxf(minN, fminf(maxN, n));
+}
+
+double MathUtils::clampD(double n, double minN, double maxN)
+{
+	return fmax(minN, fmin(maxN, n));
 }
 
 float MathUtils::modAngle(float angle)
