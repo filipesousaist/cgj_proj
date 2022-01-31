@@ -174,6 +174,7 @@
     <ClCompile Include="Orange.cpp" />
     <ClCompile Include="Pawn.cpp" />
     <ClCompile Include="ScreenQuad.cpp" />
+    <ClCompile Include="Skybox.cpp" />
     <ClCompile Include="Table.cpp" />
     <ClCompile Include="Texture_Loader.cpp" />
     <ClCompile Include="Tree.cpp" />
@@ -200,6 +201,7 @@
     <ClInclude Include="Orange.h" />
     <ClInclude Include="Pawn.h" />
     <ClInclude Include="ScreenQuad.h" />
+    <ClInclude Include="Skybox.h" />
     <ClInclude Include="src\resource.h" />
     <ClInclude Include="src\Texture_Loader.h" />
     <ClInclude Include="src\Utils.h" />
@@ -222,10 +224,16 @@
     <Image Include="img\flar.tga" />
     <Image Include="img\hxgn.tga" />
     <Image Include="img\lightwood.tga" />
+    <Image Include="img\negx.jpg" />
+    <Image Include="img\negy.jpg" />
+    <Image Include="img\negz.jpg" />
     <Image Include="img\orangeNormal.jpg" />
     <Image Include="img\orangeTex.png" />
     <Image Include="img\Orange_001_NORM.jpg" />
     <Image Include="img\particle.tga" />
+    <Image Include="img\posx.jpg" />
+    <Image Include="img\posy.jpg" />
+    <Image Include="img\posz.jpg" />
     <Image Include="img\ring.tga" />
     <Image Include="img\square-tiled-texture.jpg" />
     <Image Include="img\stone.tga" />

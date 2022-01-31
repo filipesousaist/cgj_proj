@@ -49,6 +49,7 @@
 #include "Utils.h"
 #include "MathUtils.h"
 #include <flare.h>
+#include <Skybox.h>
 
 #define frand()		((float)rand()/RAND_MAX)
 
@@ -90,6 +91,8 @@ ScreenQuad* restartQuad;
 const int NUM_LIVES = 5;
 Lives* lives;
 
+Skybox* skybox;
+
 //External array storage defined in AVTmathLib.cpp
 
 /// The storage for matrices
@@ -100,13 +103,15 @@ extern float mCompMatrix[COUNT_COMPUTED_MATRICES][16];
 extern float mNormal3x3[9];
 
 GLint pvm_uniformId;
+GLint model_uniformId;
 GLint vm_uniformId;
 GLint normal_uniformId;
 GLint tex_loc[2];
 GLint texMode_uniformId;
 GLint tex_normalMap_loc;
+GLint tex_skyBoxMap_loc;
 
-const int NUM_TEXTURES = 8;
+const int NUM_TEXTURES = 9;
 GLuint TextureArray[NUM_TEXTURES];
 
 const int NUM_FLARE_TEXTURES = 5;
@@ -634,6 +639,47 @@ void renderText() {
 	glDisable(GL_BLEND);
 }
 
+void renderSkybox() {
+	glActiveTexture(GL_TEXTURE0);
+	glBindTexture(GL_TEXTURE_CUBE_MAP, TextureArray[SKY_TEX]);
+	glUniform1i(tex_skyBoxMap_loc, 0);
+
+	glUniform1i(texMode_uniformId, 3);
+
+	//it won't write anything to the zbuffer; all subsequently drawn scenery to be in front of the sky box. 
+	glDepthMask(GL_FALSE);
+	glFrontFace(GL_CW); // set clockwise vertex order to mean the front
+
+	pushMatrix(MODEL);
+	pushMatrix(VIEW);  //se quiser anular a translação
+
+	//  Fica mais realista se não anular a translação da câmara 
+	// Cancel the translation movement of the camera - de acordo com o tutorial do Antons
+	mMatrix[VIEW][12] = 0.0f;
+	mMatrix[VIEW][13] = 0.0f;
+	mMatrix[VIEW][14] = 0.0f;
+
+	scale(MODEL, 100.0f, 100.0f, 100.0f);
+	translate(MODEL, -0.5f, -0.5f, -0.5f);
+
+	// send matrices to OGL
+	glUniformMatrix4fv(model_uniformId, 1, GL_FALSE, mMatrix[MODEL]); //Transformação de modelação do cubo unitário para o "Big Cube"
+	computeDerivedMatrix(PROJ_VIEW_MODEL);
+	glUniformMatrix4fv(pvm_uniformId, 1, GL_FALSE, mCompMatrix[PROJ_VIEW_MODEL]);
+
+	vector<Object::Part>* parts = skybox->getParts();
+
+	for (const Object::Part& part : *parts) {
+		glBindVertexArray(part.mesh.vao);
+		glDrawElements(part.mesh.type, part.mesh.numIndexes, GL_UNSIGNED_INT, 0);
+		glBindVertexArray(0);
+		popMatrix(MODEL);
+		popMatrix(VIEW);
+	}
+	glFrontFace(GL_CCW); // restore counter clockwise vertex order to mean the front
+	glDepthMask(GL_TRUE);
+	glBindTexture(GL_TEXTURE_CUBE_MAP, 0);
+}
 
 void renderScene(void) {
 
@@ -654,6 +700,8 @@ void renderScene(void) {
 	
 	// use our shader
 	glUseProgram(shader.getProgramIndex());
+
+	renderSkybox();
 
 	renderLights();
 
@@ -986,11 +1034,13 @@ GLuint setupShaders() {
 
 	texMode_uniformId = glGetUniformLocation(shader.getProgramIndex(), "texMode"); // different modes of texturing
 	pvm_uniformId = glGetUniformLocation(shader.getProgramIndex(), "m_pvm");
+	model_uniformId = glGetUniformLocation(shader.getProgramIndex(), "m_Model");
 	vm_uniformId = glGetUniformLocation(shader.getProgramIndex(), "m_viewModel");
 	normal_uniformId = glGetUniformLocation(shader.getProgramIndex(), "m_normal");
 	tex_loc[0] = glGetUniformLocation(shader.getProgramIndex(), "texmap");
 	tex_loc[1] = glGetUniformLocation(shader.getProgramIndex(), "texmap1");
 	tex_normalMap_loc = glGetUniformLocation(shader.getProgramIndex(), "normalMap");
+	tex_skyBoxMap_loc = glGetUniformLocation(shader.getProgramIndex(), "skyBoxMap");
 
 	std::printf("InfoLog for Per Fragment Phong Lightning Shader\n%s\n\n", shader.getAllInfoLogs().c_str());
 
@@ -1023,6 +1073,11 @@ void createScene() {
 	Texture2D_Loader(TextureArray, "img/particle.tga", PARTICLE_TEX);
 	Texture2D_Loader(TextureArray, "img/heart.png", LIFE_TEX);
 
+	//Sky Box Texture Object
+	const char* filenames[] = { "img/posx.jpg", "img/negx.jpg", "img/posy.jpg", "img/negy.jpg", "img/posz.jpg", "img/negz.jpg" };
+
+	TextureCubeMap_Loader(TextureArray, filenames, SKY_TEX);
+
 	//Flare elements textures
 	glGenTextures(NUM_FLARE_TEXTURES, FlareTextureArray);
 	Texture2D_Loader(FlareTextureArray, "img/crcl.tga", 0);
@@ -1030,6 +1085,9 @@ void createScene() {
 	Texture2D_Loader(FlareTextureArray, "img/hxgn.tga", 2);
 	Texture2D_Loader(FlareTextureArray, "img/ring.tga", 3);
 	Texture2D_Loader(FlareTextureArray, "img/sun.tga", 4);
+
+	//Create skybox
+	skybox = new Skybox();
 
 	//createTable();
 	gameObjects.push_back(new Table());
@@ -1127,7 +1185,10 @@ void init()
 	// some GL settings
 	glEnable(GL_DEPTH_TEST);
 	glEnable(GL_CULL_FACE);
+	glCullFace(GL_BACK);		 // cull back face
+	glFrontFace(GL_CCW); // set counter-clockwise vertex order to mean the front
 	glEnable(GL_MULTISAMPLE);
+	glEnable(GL_TEXTURE_CUBE_MAP_SEAMLESS);
 	glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
 }
 
