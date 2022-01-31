@@ -23,7 +23,6 @@ uniform sampler2D normalMap;
 uniform samplerCube skyBoxMap;
 in vec3 skyboxTexCoord;
 
-uniform bool particle;
 
 struct Materials {
 	vec4 diffuse;
@@ -203,18 +202,12 @@ void main() {
 	else if (mat.texCount == 1) 
 	{
 		texel = texture(texmap, DataIn.texCoord);
-		if (particle) {
-			if ((texel.a == 0.0) || (mat.diffuse.a == 0)) discard;
-			else
-				colorOut = mat.diffuse * texel;
-		}
-		else {
-			if (texel.a <= 0.1) discard;
-			else if (mergeTextureWithColor) // mix 
-				colorOut = max(finalDiffuse * texel + finalSpecular, mat.ambient * texel);
-			else // diffuse color is replaced by texel color, with specular area or ambient (0.07 * texel)
-				colorOut = max(totalDiffuse * texel + finalSpecular, 0.07 * texel);
-		}
+		if (texel.a <= 0.1) discard;
+		else if (mergeTextureWithColor) // mix 
+			colorOut = max(finalDiffuse * texel + finalSpecular, mat.ambient * texel);
+		else // diffuse color is replaced by texel color, with specular area or ambient (0.07 * texel)
+			colorOut = max(totalDiffuse * texel + finalSpecular, 0.07 * texel);
+		
 	}
 	else if (mat.texCount == -1) // modulated texture for particle
 	{
