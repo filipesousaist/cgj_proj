@@ -192,67 +192,6 @@ void initFireworks()
 	}
 }
 
-void renderFirework(Firework* particle) {
-	glEnable(GL_BLEND);
-	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-	vector<Object::Part>* parts = particle->getParts();
-	particle->updateParticle(0.033f);
-
-	for (const Object::Part& part : *parts) {
-		GLint loc;
-
-		glActiveTexture(GL_TEXTURES[0]);
-		glBindTexture(GL_TEXTURE_2D, TextureArray[PARTICLE_TEX]);
-		glUniform1i(tex_loc[0], 0);
-
-		loc = glGetUniformLocation(shader.getProgramIndex(), "mergeTextureWithColor");
-		glUniform1i(loc, part.mesh.mat.mergeTextureWithColor);
-
-		loc = glGetUniformLocation(shader.getProgramIndex(), "mat.texCount");
-		glUniform1i(loc, -1);
-
-		glDepthMask(GL_FALSE);  //Depth Buffer Read Only
-
-		if (particle->isAlive()) {
-			particle->setDiffuse(0.882, 0.552, 0.211);
-
-
-			loc = glGetUniformLocation(shader.getProgramIndex(), "mat.diffuse");
-			glUniform4fv(loc, 1, particle->getDiffuse());
-
-			float worldPos[3]{ particle->getX(), particle->getY(), particle->getZ() };
-
-			pushMatrix(MODEL);
-			translate(MODEL, particle->getX(), particle->getY(), particle->getZ());
-			if (cameraProjection == Camera::PERSPECTIVE)
-				l3dBillboardSphericalBegin(camWorld, worldPos);
-			else if (cameraProjection == Camera::CAR)
-				l3dBillboardCylindricalBegin(camWorld, worldPos);
-
-			pushMatrix(MODEL);
-			translate(MODEL, particle->getX(), particle->getY(), particle->getZ());
-
-			// send matrices to OGL
-			computeDerivedMatrix(PROJ_VIEW_MODEL);
-			glUniformMatrix4fv(vm_uniformId, 1, GL_FALSE, mCompMatrix[VIEW_MODEL]);
-			glUniformMatrix4fv(pvm_uniformId, 1, GL_FALSE, mCompMatrix[PROJ_VIEW_MODEL]);
-			computeNormalMatrix3x3();
-			glUniformMatrix3fv(normal_uniformId, 1, GL_FALSE, mNormal3x3);
-
-			// Render mesh
-			glBindVertexArray(part.mesh.vao);
-			glDrawElements(part.mesh.type, part.mesh.numIndexes, GL_UNSIGNED_INT, 0);
-			glBindVertexArray(0);
-
-			popMatrix(MODEL);
-			popMatrix(MODEL);
-
-
-		}
-		else num_dead_particles++;
-	}
-}
-
 void refresh(int value)
 {
 	glutTimerFunc(1000 / 60, refresh, 0);
@@ -541,7 +480,7 @@ void render_flare(FLARE_DEF* flare, int lx, int ly, int* m_viewport) {
 	}
 	glEnable(GL_DEPTH_TEST);
 	glEnable(GL_CULL_FACE);
-	//glDisable(GL_BLEND);
+	glDisable(GL_BLEND);
 }
 
 void renderHUDShapes() {
@@ -605,11 +544,72 @@ void renderText() {
 	popMatrix(PROJECTION);
 
 	glEnable(GL_DEPTH_TEST);
-	glDisable(GL_BLEND);
+}
+
+void renderFirework(Firework* particle) {
+	glEnable(GL_BLEND);
+	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+	vector<Object::Part>* parts = particle->getParts();
+	particle->updateParticle(0.033f);
+
+	for (const Object::Part& part : *parts) {
+		GLint loc;
+
+		glActiveTexture(GL_TEXTURES[0]);
+		glBindTexture(GL_TEXTURE_2D, TextureArray[PARTICLE_TEX]);
+		glUniform1i(tex_loc[0], 0);
+
+		loc = glGetUniformLocation(shader.getProgramIndex(), "mergeTextureWithColor");
+		glUniform1i(loc, false);
+
+		loc = glGetUniformLocation(shader.getProgramIndex(), "mat.texCount");
+		glUniform1i(loc, -1);
+
+		glDepthMask(GL_FALSE);  //Depth Buffer Read Only
+
+		if (particle->isAlive()) {
+			particle->setDiffuse(0.882, 0.552, 0.211);
+
+
+			loc = glGetUniformLocation(shader.getProgramIndex(), "mat.diffuse");
+			glUniform4fv(loc, 1, particle->getDiffuse());
+
+			float worldPos[3]{ particle->getX(), particle->getY(), particle->getZ() };
+
+			pushMatrix(MODEL);
+			translate(MODEL, particle->getX(), particle->getY(), particle->getZ());
+			if (cameraProjection == Camera::PERSPECTIVE)
+				l3dBillboardSphericalBegin(camWorld, worldPos);
+			else if (cameraProjection == Camera::CAR)
+				l3dBillboardCylindricalBegin(camWorld, worldPos);
+
+			pushMatrix(MODEL);
+			translate(MODEL, particle->getX(), particle->getY(), particle->getZ());
+
+			// send matrices to OGL
+			computeDerivedMatrix(PROJ_VIEW_MODEL);
+			glUniformMatrix4fv(vm_uniformId, 1, GL_FALSE, mCompMatrix[VIEW_MODEL]);
+			glUniformMatrix4fv(pvm_uniformId, 1, GL_FALSE, mCompMatrix[PROJ_VIEW_MODEL]);
+			computeNormalMatrix3x3();
+			glUniformMatrix3fv(normal_uniformId, 1, GL_FALSE, mNormal3x3);
+
+			// Render mesh
+			glBindVertexArray(part.mesh.vao);
+			glDrawElements(part.mesh.type, part.mesh.numIndexes, GL_UNSIGNED_INT, 0);
+			glBindVertexArray(0);
+
+			popMatrix(MODEL);
+			popMatrix(MODEL);
+
+
+		}
+		else num_dead_particles++;
+	}
+	glDepthMask(GL_TRUE); //make depth buffer again writeable
 }
 
 void renderSkybox() {
-	glActiveTexture(GL_TEXTURE0);
+	glActiveTexture(GL_TEXTURES[0]);
 	glBindTexture(GL_TEXTURE_CUBE_MAP, TextureArray[SKY_TEX]);
 	glUniform1i(tex_skyBoxMap_loc, 0);
 
@@ -635,6 +635,9 @@ void renderSkybox() {
 	glUniformMatrix4fv(model_uniformId, 1, GL_FALSE, mMatrix[MODEL]); //Transformação de modelação do cubo unitário para o "Big Cube"
 	computeDerivedMatrix(PROJ_VIEW_MODEL);
 	glUniformMatrix4fv(pvm_uniformId, 1, GL_FALSE, mCompMatrix[PROJ_VIEW_MODEL]);
+	GLint loc;
+	loc = glGetUniformLocation(shader.getProgramIndex(), "mat.texCount");
+	glUniform1i(loc, 0);
 
 	vector<Object::Part>* parts = skybox->getParts();
 
@@ -642,9 +645,11 @@ void renderSkybox() {
 		glBindVertexArray(part.mesh.vao);
 		glDrawElements(part.mesh.type, part.mesh.numIndexes, GL_UNSIGNED_INT, 0);
 		glBindVertexArray(0);
-		popMatrix(MODEL);
-		popMatrix(VIEW);
 	}
+	
+
+	popMatrix(MODEL);
+	popMatrix(VIEW);
 	glFrontFace(GL_CCW); // restore counter clockwise vertex order to mean the front
 	glDepthMask(GL_TRUE);
 	glBindTexture(GL_TEXTURE_CUBE_MAP, 0);
@@ -658,9 +663,7 @@ void renderScene(void) {
 	FrameCount++;
 
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-	//The glyph contains background colors and non-transparent for the actual character pixels. So we use the blending
-	glEnable(GL_BLEND);
-	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+	glEnable(GL_DEPTH_TEST);
 	// load identity matrices
 	loadIdentity(VIEW);
 	loadIdentity(MODEL);
@@ -671,6 +674,10 @@ void renderScene(void) {
 	glUseProgram(shader.getProgramIndex());
 
 	renderSkybox();
+	
+	//The glyph contains background colors and non-transparent for the actual character pixels. So we use the blending
+	glEnable(GL_BLEND);
+	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
 	renderLights();
 
@@ -687,7 +694,6 @@ void renderScene(void) {
 		for (Firework* particle : fireworks)
 			renderFirework(particle);
 
-		glDepthMask(GL_TRUE);  //Depth Buffer Read Only
 		if (num_dead_particles == MAX_PARTICLES) {
 			firework = false;
 			num_dead_particles = 0;
@@ -724,13 +730,15 @@ void renderScene(void) {
 	}
 
 	if (showText) {
-		renderHUDShapes();
+		//renderHUDShapes();
 		renderText();
 	}
 	
-	glutSwapBuffers();
 
 	lastTime = currentTime;
+	glBindTexture(GL_TEXTURE_2D, 0);
+	glDisable(GL_BLEND);
+	glutSwapBuffers();
 }
 
 // ------------------------------------------------------------

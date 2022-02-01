@@ -28,11 +28,11 @@ Firework::Firework(float x, float y, float z, GLfloat v, GLfloat phi, GLfloat th
 	float spec[] = { 0.0f, 0.0f, 0.0f, 1.0f };
 	float emissive[] = { 0.0f, 0.0f, 0.0f, 1.0f };
 	float shininess = 100.0f;
-	int texIndices[] = { PARTICLE_TEX, NO_TEX };
-	bool mergeTextureWithColor = true;
+	int texIndices[] = { PARTICLE_TEX};
+	bool mergeTextureWithColor = false;
 
 	MyMesh amesh = createQuad(0.5f, 0.5f);
-	setMeshProperties(&amesh, amb, diff, spec, emissive, shininess, texIndices, mergeTextureWithColor);
+	setMeshProperties(&amesh, amesh.mat.ambient, amesh.mat.diffuse, amesh.mat.specular, amesh.mat.emissive, amesh.mat.shininess, texIndices, mergeTextureWithColor);
 
 	this->addPart(amesh);
 }

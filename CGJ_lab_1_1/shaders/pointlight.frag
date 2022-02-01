@@ -194,7 +194,6 @@ void main() {
 		if (texMode == 3) //SkyBox
 		{
 			colorOut = texture(skyBoxMap, skyboxTexCoord);
-			return;
 
 		}else{
 			colorOut = max(finalDiffuse + finalSpecular, mat.ambient);
