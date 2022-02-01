@@ -46,6 +46,7 @@
 #include "l3DBillboard.h"
 #include "Utils.h"
 #include <flare.h>
+#include <Skybox.h>
 
 #define frand()		((float)rand()/RAND_MAX)
 
@@ -80,6 +81,8 @@ float camRatio;
 ScreenQuad* pauseQuad;
 MyMesh flareQuad;
 
+Skybox* skybox;
+
 //External array storage defined in AVTmathLib.cpp
 
 /// The storage for matrices
@@ -90,15 +93,17 @@ extern float mCompMatrix[COUNT_COMPUTED_MATRICES][16];
 extern float mNormal3x3[9];
 
 GLint pvm_uniformId;
+GLint model_uniformId;
 GLint vm_uniformId;
 GLint normal_uniformId;
 GLint tex_loc[2];
 GLint texMode_uniformId;
 GLint tex_normalMap_loc;
+GLint tex_skyBoxMap_loc;
 
 
 GLuint FlareTextureArray[5];
-GLuint TextureArray[7];
+GLuint TextureArray[8];
 
 int windowWidth = 0;
 int windowHeight = 0;
@@ -183,67 +188,6 @@ void initFireworks()
 	for (int i = 0; i < MAX_PARTICLES; i++) {
 		fireworks.push_back(new Firework(0, 7.5f, 0,
 			0.8f * frand() + 0.2f, frand() * PI, 2.0f * frand() * PI));
-	}
-}
-
-void renderFirework(Firework* particle) {
-	glEnable(GL_BLEND);
-	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-	vector<Object::Part>* parts = particle->getParts();
-	particle->updateParticle(0.033f);
-
-	for (const Object::Part& part : *parts) {
-		GLint loc;
-
-		glActiveTexture(GL_TEXTURES[0]);
-		glBindTexture(GL_TEXTURE_2D, TextureArray[PARTICLE_TEX]);
-		glUniform1i(tex_loc[0], 0);
-
-		loc = glGetUniformLocation(shader.getProgramIndex(), "mergeTextureWithColor");
-		glUniform1i(loc, part.mesh.mat.mergeTextureWithColor);
-
-		loc = glGetUniformLocation(shader.getProgramIndex(), "mat.texCount");
-		glUniform1i(loc, -1);
-
-		glDepthMask(GL_FALSE);  //Depth Buffer Read Only
-
-		if (particle->isAlive()) {
-			particle->setDiffuse(0.882, 0.552, 0.211);
-
-
-			loc = glGetUniformLocation(shader.getProgramIndex(), "mat.diffuse");
-			glUniform4fv(loc, 1, particle->getDiffuse());
-
-			float worldPos[3]{ particle->getX(), particle->getY(), particle->getZ() };
-
-			pushMatrix(MODEL);
-			translate(MODEL, particle->getX(), particle->getY(), particle->getZ());
-			if (cameraProjection == Camera::PERSPECTIVE)
-				l3dBillboardSphericalBegin(camWorld, worldPos);
-			else if (cameraProjection == Camera::CAR)
-				l3dBillboardCylindricalBegin(camWorld, worldPos);
-
-			pushMatrix(MODEL);
-			translate(MODEL, particle->getX(), particle->getY(), particle->getZ());
-
-			// send matrices to OGL
-			computeDerivedMatrix(PROJ_VIEW_MODEL);
-			glUniformMatrix4fv(vm_uniformId, 1, GL_FALSE, mCompMatrix[VIEW_MODEL]);
-			glUniformMatrix4fv(pvm_uniformId, 1, GL_FALSE, mCompMatrix[PROJ_VIEW_MODEL]);
-			computeNormalMatrix3x3();
-			glUniformMatrix3fv(normal_uniformId, 1, GL_FALSE, mNormal3x3);
-
-			// Render mesh
-			glBindVertexArray(part.mesh.vao);
-			glDrawElements(part.mesh.type, part.mesh.numIndexes, GL_UNSIGNED_INT, 0);
-			glBindVertexArray(0);
-
-			popMatrix(MODEL);
-			popMatrix(MODEL);
-
-
-		}
-		else num_dead_particles++;
 	}
 }
 
@@ -535,7 +479,7 @@ void render_flare(FLARE_DEF* flare, int lx, int ly, int* m_viewport) {
 	}
 	glEnable(GL_DEPTH_TEST);
 	glEnable(GL_CULL_FACE);
-	//glDisable(GL_BLEND);
+	glDisable(GL_BLEND);
 }
 
 void renderHUDShapes() {
@@ -599,7 +543,115 @@ void renderText() {
 	popMatrix(PROJECTION);
 
 	glEnable(GL_DEPTH_TEST);
-	glDisable(GL_BLEND);
+}
+
+void renderFirework(Firework* particle) {
+	glEnable(GL_BLEND);
+	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+	vector<Object::Part>* parts = particle->getParts();
+	particle->updateParticle(0.033f);
+
+	for (const Object::Part& part : *parts) {
+		GLint loc;
+
+		glActiveTexture(GL_TEXTURES[0]);
+		glBindTexture(GL_TEXTURE_2D, TextureArray[PARTICLE_TEX]);
+		glUniform1i(tex_loc[0], 0);
+
+		loc = glGetUniformLocation(shader.getProgramIndex(), "mergeTextureWithColor");
+		glUniform1i(loc, false);
+
+		loc = glGetUniformLocation(shader.getProgramIndex(), "mat.texCount");
+		glUniform1i(loc, -1);
+
+		glDepthMask(GL_FALSE);  //Depth Buffer Read Only
+
+		if (particle->isAlive()) {
+			particle->setDiffuse(0.882, 0.552, 0.211);
+
+
+			loc = glGetUniformLocation(shader.getProgramIndex(), "mat.diffuse");
+			glUniform4fv(loc, 1, particle->getDiffuse());
+
+			float worldPos[3]{ particle->getX(), particle->getY(), particle->getZ() };
+
+			pushMatrix(MODEL);
+			translate(MODEL, particle->getX(), particle->getY(), particle->getZ());
+			if (cameraProjection == Camera::PERSPECTIVE)
+				l3dBillboardSphericalBegin(camWorld, worldPos);
+			else if (cameraProjection == Camera::CAR)
+				l3dBillboardCylindricalBegin(camWorld, worldPos);
+
+			pushMatrix(MODEL);
+			translate(MODEL, particle->getX(), particle->getY(), particle->getZ());
+
+			// send matrices to OGL
+			computeDerivedMatrix(PROJ_VIEW_MODEL);
+			glUniformMatrix4fv(vm_uniformId, 1, GL_FALSE, mCompMatrix[VIEW_MODEL]);
+			glUniformMatrix4fv(pvm_uniformId, 1, GL_FALSE, mCompMatrix[PROJ_VIEW_MODEL]);
+			computeNormalMatrix3x3();
+			glUniformMatrix3fv(normal_uniformId, 1, GL_FALSE, mNormal3x3);
+
+			// Render mesh
+			glBindVertexArray(part.mesh.vao);
+			glDrawElements(part.mesh.type, part.mesh.numIndexes, GL_UNSIGNED_INT, 0);
+			glBindVertexArray(0);
+
+			popMatrix(MODEL);
+			popMatrix(MODEL);
+
+
+		}
+		else num_dead_particles++;
+	}
+	glDepthMask(GL_TRUE); //make depth buffer again writeable
+}
+
+void renderSkybox() {
+	glActiveTexture(GL_TEXTURES[0]);
+	glBindTexture(GL_TEXTURE_CUBE_MAP, TextureArray[SKY_TEX]);
+	glUniform1i(tex_skyBoxMap_loc, 0);
+
+	glUniform1i(texMode_uniformId, 3);
+
+	//it won't write anything to the zbuffer; all subsequently drawn scenery to be in front of the sky box. 
+	glDepthMask(GL_FALSE);
+	glFrontFace(GL_CW); // set clockwise vertex order to mean the front
+
+	pushMatrix(MODEL);
+	pushMatrix(VIEW);  //se quiser anular a translação
+
+	//  Fica mais realista se não anular a translação da câmara 
+	// Cancel the translation movement of the camera - de acordo com o tutorial do Antons
+	mMatrix[VIEW][12] = 0.0f;
+	mMatrix[VIEW][13] = 0.0f;
+	mMatrix[VIEW][14] = 0.0f;
+
+	scale(MODEL, 100.0f, 100.0f, 100.0f);
+	translate(MODEL, -0.5f, -0.5f, -0.5f);
+
+	// send matrices to OGL
+	glUniformMatrix4fv(model_uniformId, 1, GL_FALSE, mMatrix[MODEL]); //Transformação de modelação do cubo unitário para o "Big Cube"
+	computeDerivedMatrix(PROJ_VIEW_MODEL);
+	glUniformMatrix4fv(pvm_uniformId, 1, GL_FALSE, mCompMatrix[PROJ_VIEW_MODEL]);
+	GLint loc;
+	loc = glGetUniformLocation(shader.getProgramIndex(), "mat.texCount");
+	glUniform1i(loc, 0);
+
+	vector<Object::Part>* parts = skybox->getParts();
+
+	for (const Object::Part& part : *parts) {
+		glBindVertexArray(part.mesh.vao);
+		glDrawElements(part.mesh.type, part.mesh.numIndexes, GL_UNSIGNED_INT, 0);
+		glBindVertexArray(0);
+	}
+	
+
+	popMatrix(MODEL);
+	popMatrix(VIEW);
+	glFrontFace(GL_CCW); // restore counter clockwise vertex order to mean the front
+	glDepthMask(GL_TRUE);
+	glBindTexture(GL_TEXTURE_CUBE_MAP, 0);
 }
 
 void renderScene(void) {
@@ -610,9 +662,7 @@ void renderScene(void) {
 	FrameCount++;
 
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-	//The glyph contains background colors and non-transparent for the actual character pixels. So we use the blending
-	glEnable(GL_BLEND);
-	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+	glEnable(GL_DEPTH_TEST);
 	// load identity matrices
 	loadIdentity(VIEW);
 	loadIdentity(MODEL);
@@ -621,6 +671,12 @@ void renderScene(void) {
 	
 	// use our shader
 	glUseProgram(shader.getProgramIndex());
+
+	renderSkybox();
+	
+	//The glyph contains background colors and non-transparent for the actual character pixels. So we use the blending
+	glEnable(GL_BLEND);
+	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
 	renderLights();
 
@@ -637,7 +693,6 @@ void renderScene(void) {
 		for (Firework* particle : fireworks)
 			renderFirework(particle);
 
-		glDepthMask(GL_TRUE);  //Depth Buffer Read Only
 		if (num_dead_particles == MAX_PARTICLES) {
 			firework = false;
 			num_dead_particles = 0;
@@ -674,13 +729,15 @@ void renderScene(void) {
 	}
 
 	if (showText) {
-		renderHUDShapes();
+		//renderHUDShapes();
 		renderText();
 	}
 	
-	glutSwapBuffers();
 
 	lastTime = currentTime;
+	glBindTexture(GL_TEXTURE_2D, 0);
+	glDisable(GL_BLEND);
+	glutSwapBuffers();
 }
 
 // ------------------------------------------------------------
@@ -935,11 +992,13 @@ GLuint setupShaders() {
 
 	texMode_uniformId = glGetUniformLocation(shader.getProgramIndex(), "texMode"); // different modes of texturing
 	pvm_uniformId = glGetUniformLocation(shader.getProgramIndex(), "m_pvm");
+	model_uniformId = glGetUniformLocation(shader.getProgramIndex(), "m_Model");
 	vm_uniformId = glGetUniformLocation(shader.getProgramIndex(), "m_viewModel");
 	normal_uniformId = glGetUniformLocation(shader.getProgramIndex(), "m_normal");
 	tex_loc[0] = glGetUniformLocation(shader.getProgramIndex(), "texmap");
 	tex_loc[1] = glGetUniformLocation(shader.getProgramIndex(), "texmap1");
 	tex_normalMap_loc = glGetUniformLocation(shader.getProgramIndex(), "normalMap");
+	tex_skyBoxMap_loc = glGetUniformLocation(shader.getProgramIndex(), "skyBoxMap");
 
 
 	std::printf("InfoLog for Per Fragment Phong Lightning Shader\n%s\n\n", shader.getAllInfoLogs().c_str());
@@ -963,7 +1022,7 @@ GLuint setupShaders() {
 void createScene() {
 	//Texture Object definition
 
-	glGenTextures(7, TextureArray);
+	glGenTextures(8, TextureArray);
 	Texture2D_Loader(TextureArray, "img/stone.tga", STONE_TEX);
 	Texture2D_Loader(TextureArray, "img/lightwood.tga", WOOD_TEX);
 	Texture2D_Loader(TextureArray, "img/checker.png", CHECKERS_TEX);
@@ -972,6 +1031,11 @@ void createScene() {
 	Texture2D_Loader(TextureArray, "img/tree.tga", TREE_TEX);
 	Texture2D_Loader(TextureArray, "img/particle.tga", PARTICLE_TEX);
 
+	//Sky Box Texture Object
+	const char* filenames[] = { "img/posx.jpg", "img/negx.jpg", "img/posy.jpg", "img/negy.jpg", "img/posz.jpg", "img/negz.jpg" };
+
+	TextureCubeMap_Loader(TextureArray, filenames, SKY_TEX);
+
 	//Flare elements textures
 	glGenTextures(5, FlareTextureArray);
 	Texture2D_Loader(FlareTextureArray, "img/crcl.tga", 0);
@@ -979,6 +1043,9 @@ void createScene() {
 	Texture2D_Loader(FlareTextureArray, "img/hxgn.tga", 2);
 	Texture2D_Loader(FlareTextureArray, "img/ring.tga", 3);
 	Texture2D_Loader(FlareTextureArray, "img/sun.tga", 4);
+
+	//Create skybox
+	skybox = new Skybox();
 
 	//createTable();
 	gameObjects.push_back(new Table());
@@ -1075,7 +1142,10 @@ void init()
 	// some GL settings
 	glEnable(GL_DEPTH_TEST);
 	glEnable(GL_CULL_FACE);
+	glCullFace(GL_BACK);		 // cull back face
+	glFrontFace(GL_CCW); // set counter-clockwise vertex order to mean the front
 	glEnable(GL_MULTISAMPLE);
+	glEnable(GL_TEXTURE_CUBE_MAP_SEAMLESS);
 	glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
 }
 

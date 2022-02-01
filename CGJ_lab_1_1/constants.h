@@ -11,14 +11,15 @@ const enum class Camera {
 };
 
 const int
-	NO_TEX = -1,
-	STONE_TEX = 0,
-	WOOD_TEX = 1,
-	CHECKERS_TEX = 2,
-	ORANGE_TEX = 3,
-	ORANGE_Norm = 4,
-	TREE_TEX = 5,
-	PARTICLE_TEX = 6;
+NO_TEX = -1,
+STONE_TEX = 0,
+WOOD_TEX = 1,
+CHECKERS_TEX = 2,
+ORANGE_TEX = 3,
+ORANGE_Norm = 4,
+TREE_TEX = 5,
+PARTICLE_TEX = 6,
+SKY_TEX = 7;
 const int GL_TEXTURES[] = { GL_TEXTURE0, GL_TEXTURE1 };
 
 const int NUM_POINT_LIGHTS = 6;
