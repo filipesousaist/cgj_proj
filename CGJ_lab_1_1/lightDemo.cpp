@@ -480,7 +480,7 @@ void render_flare(FLARE_DEF* flare, int lx, int ly, int* m_viewport) {
 	}
 	glEnable(GL_DEPTH_TEST);
 	glEnable(GL_CULL_FACE);
-	glDisable(GL_BLEND);
+	//glDisable(GL_BLEND);
 }
 
 void renderHUDShapes() {
