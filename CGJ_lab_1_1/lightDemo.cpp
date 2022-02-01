@@ -42,6 +42,7 @@
 #include "Table.h"
 #include "Tree.h"
 #include "Firework.h"
+#include "MirrorCube.h"
 #include "constants.h"
 #include "l3DBillboard.h"
 #include "Utils.h"
@@ -82,6 +83,7 @@ ScreenQuad* pauseQuad;
 MyMesh flareQuad;
 
 Skybox* skybox;
+MyMesh cube;
 
 //External array storage defined in AVTmathLib.cpp
 
@@ -100,10 +102,12 @@ GLint tex_loc[2];
 GLint texMode_uniformId;
 GLint tex_normalMap_loc;
 GLint tex_skyBoxMap_loc;
+GLint view_uniformId;
+GLint reflect_perFragment_uniformId;
 
 
 GLuint FlareTextureArray[5];
-GLuint TextureArray[8];
+GLuint TextureArray[9];
 
 int windowWidth = 0;
 int windowHeight = 0;
@@ -332,6 +336,16 @@ void renderObject(Object* obj) {
 				glUniform1i(tex_normalMap_loc, 1);
 			}
 		}
+
+		if (part.mesh.mat.texIndices[0] == SUGAR_TEX) {
+			glUniformMatrix4fv(view_uniformId, 1, GL_FALSE, mMatrix[VIEW]);
+
+			glUniform1i(reflect_perFragment_uniformId, 1); //reflected vector calculated in the fragment shader
+		}
+		else {
+			glUniform1i(reflect_perFragment_uniformId, 0);
+		}
+
 		loc = glGetUniformLocation(shader.getProgramIndex(), "mergeTextureWithColor");
 		glUniform1i(loc, part.mesh.mat.mergeTextureWithColor);
 
@@ -652,7 +666,7 @@ void renderSkybox() {
 	popMatrix(VIEW);
 	glFrontFace(GL_CCW); // restore counter clockwise vertex order to mean the front
 	glDepthMask(GL_TRUE);
-	glBindTexture(GL_TEXTURE_CUBE_MAP, 0);
+	//glBindTexture(GL_TEXTURE_CUBE_MAP, 0);
 }
 
 void renderScene(void) {
@@ -681,6 +695,8 @@ void renderScene(void) {
 
 	renderLights();
 
+	
+
 	for (Object* obj : gameObjects)
 		obj->update(deltaTime);
 
@@ -702,6 +718,42 @@ void renderScene(void) {
 		}
 
 	}
+
+	/*GLint loc;
+	loc = glGetUniformLocation(shader.getProgramIndex(), "mat.ambient");
+	glUniform4fv(loc, 1, cube.mat.ambient);
+	loc = glGetUniformLocation(shader.getProgramIndex(), "mat.diffuse");
+	glUniform4fv(loc, 1, cube.mat.diffuse);
+	loc = glGetUniformLocation(shader.getProgramIndex(), "mat.specular");
+	glUniform4fv(loc, 1, cube.mat.specular);
+	loc = glGetUniformLocation(shader.getProgramIndex(), "mat.shininess");
+	glUniform1f(loc, cube.mat.shininess);
+	glActiveTexture(GL_TEXTURE0);
+	glBindTexture(GL_TEXTURE_2D, TextureArray[WOOD_TEX]);
+	glUniform1i(tex_loc[0], 0);
+	pushMatrix(MODEL);
+	translate(MODEL, 4.0f, 0.0f, 4.0f);
+
+	// send matrices to OGL
+	glUniformMatrix4fv(view_uniformId, 1, GL_FALSE, mMatrix[VIEW]);
+	computeDerivedMatrix(PROJ_VIEW_MODEL);
+	glUniformMatrix4fv(vm_uniformId, 1, GL_FALSE, mCompMatrix[VIEW_MODEL]);
+	glUniformMatrix4fv(pvm_uniformId, 1, GL_FALSE, mCompMatrix[PROJ_VIEW_MODEL]);
+	computeNormalMatrix3x3();
+	glUniformMatrix3fv(normal_uniformId, 1, GL_FALSE, mNormal3x3);
+
+	glUniform1i(texMode_uniformId, 0); //  Environmental cube mapping
+
+	glUniform1i(reflect_perFragment_uniformId, 1); //reflected vector calculated in the fragment shader
+
+
+	glBindVertexArray(cube.vao);
+	glDrawElements(cube.type, cube.numIndexes, GL_UNSIGNED_INT, 0);
+	glBindVertexArray(0);
+
+	popMatrix(MODEL);
+	glUniform1i(reflect_perFragment_uniformId, 0); //reflected vector calculated in the fragment shader*/
+
 
 	if (flare && candles) {
 		int flarePos[2];
@@ -737,6 +789,7 @@ void renderScene(void) {
 
 	lastTime = currentTime;
 	glBindTexture(GL_TEXTURE_2D, 0);
+	glBindTexture(GL_TEXTURE_CUBE_MAP, 0);
 	glDisable(GL_BLEND);
 	glutSwapBuffers();
 }
@@ -993,6 +1046,7 @@ GLuint setupShaders() {
 
 	texMode_uniformId = glGetUniformLocation(shader.getProgramIndex(), "texMode"); // different modes of texturing
 	pvm_uniformId = glGetUniformLocation(shader.getProgramIndex(), "m_pvm");
+	view_uniformId = glGetUniformLocation(shader.getProgramIndex(), "m_View");
 	model_uniformId = glGetUniformLocation(shader.getProgramIndex(), "m_Model");
 	vm_uniformId = glGetUniformLocation(shader.getProgramIndex(), "m_viewModel");
 	normal_uniformId = glGetUniformLocation(shader.getProgramIndex(), "m_normal");
@@ -1000,6 +1054,8 @@ GLuint setupShaders() {
 	tex_loc[1] = glGetUniformLocation(shader.getProgramIndex(), "texmap1");
 	tex_normalMap_loc = glGetUniformLocation(shader.getProgramIndex(), "normalMap");
 	tex_skyBoxMap_loc = glGetUniformLocation(shader.getProgramIndex(), "skyBoxMap");
+	reflect_perFragment_uniformId = glGetUniformLocation(shader.getProgramIndex(), "reflect_perFrag"); //reflection vector calculated in the frag shader
+
 
 
 	std::printf("InfoLog for Per Fragment Phong Lightning Shader\n%s\n\n", shader.getAllInfoLogs().c_str());
@@ -1031,6 +1087,7 @@ void createScene() {
 	Texture2D_Loader(TextureArray, "img/Orange_001_NORM.jpg", ORANGE_Norm);
 	Texture2D_Loader(TextureArray, "img/tree.tga", TREE_TEX);
 	Texture2D_Loader(TextureArray, "img/particle.tga", PARTICLE_TEX);
+	Texture2D_Loader(TextureArray, "img/sugar.jpg", SUGAR_TEX);
 
 	//Sky Box Texture Object
 	const char* filenames[] = { "img/posx.jpg", "img/negx.jpg", "img/posy.jpg", "img/negy.jpg", "img/posz.jpg", "img/negz.jpg" };
@@ -1116,6 +1173,27 @@ void createScene() {
 
 	//Load flare from file
 	loadFlareFile(&AVTflare, "flare.txt");
+
+	float amb[] = { 0.2f, 0.15f, 0.1f, 1.0f };
+	float diff[] = { 0.8f, 0.6f, 0.4f, 1.0f };
+	float spec[] = { 0.8f, 0.8f, 0.8f, 1.0f };
+
+	float emissive[] = { 0.0f, 0.0f, 0.0f, 1.0f };
+	float shininess = 100.0f;
+	int texcount = 0;
+
+	MyMesh amesh;
+	amesh = createCube();
+	memcpy(amesh.mat.ambient, amb, 4 * sizeof(float));
+	memcpy(amesh.mat.diffuse, diff, 4 * sizeof(float));
+	memcpy(amesh.mat.specular, spec, 4 * sizeof(float));
+	memcpy(amesh.mat.emissive, emissive, 4 * sizeof(float));
+	amesh.mat.shininess = shininess;
+	amesh.mat.texCount = texcount;
+
+	cube = amesh;
+
+	gameObjects.push_back(new MirrorCube());
 }
 
 void init()

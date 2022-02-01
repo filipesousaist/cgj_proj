@@ -102,6 +102,9 @@
     <ClCompile Include="Skybox.cpp">
       <Filter>Source Files\Objects</Filter>
     </ClCompile>
+    <ClCompile Include="MirrorCube.cpp">
+      <Filter>Source Files\Objects</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="constants.h">
@@ -182,6 +185,9 @@
     <ClInclude Include="Skybox.h">
       <Filter>Header Files\Objects</Filter>
     </ClInclude>
+    <ClInclude Include="MirrorCube.h">
+      <Filter>Header Files\Objects</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="Dependencies.exe" />
@@ -254,6 +260,9 @@
       <Filter>Resource Files\Images</Filter>
     </Image>
     <Image Include="img\posz.jpg">
+      <Filter>Resource Files\Images</Filter>
+    </Image>
+    <Image Include="img\sugar.jpg">
       <Filter>Resource Files\Images</Filter>
     </Image>
   </ItemGroup>
