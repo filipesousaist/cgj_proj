@@ -47,7 +47,6 @@
 #include "Utils.h"
 #include <flare.h>
 #include <Skybox.h>
-#include <RearViewMirror.h>
 
 #define frand()		((float)rand()/RAND_MAX)
 
