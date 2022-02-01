@@ -80,6 +80,12 @@ Camera cameraProjection;
 float camRatio;
 
 ScreenQuad* pauseQuad;
+ScreenQuad* gameOverQuad;
+ScreenQuad* restartQuad;
+
+const int NUM_LIVES = 5;
+Lives* lives;
+
 MyMesh flareQuad;
 
 Skybox* skybox;
@@ -105,9 +111,11 @@ GLint tex_skyBoxMap_loc;
 GLint view_uniformId;
 GLint reflect_perFragment_uniformId;
 
+const int NUM_TEXTURES = 10;
+GLuint TextureArray[NUM_TEXTURES];
 
-GLuint FlareTextureArray[5];
-GLuint TextureArray[9];
+const int NUM_FLARE_TEXTURES = 5;
+GLuint FlareTextureArray[NUM_FLARE_TEXTURES];
 
 int windowWidth = 0;
 int windowHeight = 0;
@@ -177,6 +185,10 @@ inline int clampi(const int x, const int min, const int max) {
 	return (x < min ? min : (x > max ? max : x));
 }
 
+bool restartKey = false;
+
+bool gameOver = false;
+
 void timer(int value)
 {
 	std::ostringstream oss;
@@ -229,7 +241,10 @@ void changeSize(int w, int h) {
 
 	// Update pause quad size and position
 	float scale = fminf(windowWidth, windowHeight);
-	pauseQuad->resize(scale * 1.0f, scale * 0.2f, w, h);
+	pauseQuad->resize(w, h);
+	gameOverQuad->resize(w, h);
+	restartQuad->resize(w, h);
+	lives->resize(w, h);
 
 	// Prevent a divide by zero, when window is too short
 	if (h == 0)
@@ -331,7 +346,7 @@ void renderObject(Object* obj) {
 		if (part.mesh.mat.texIndices[0] == ORANGE_TEX) { //check if it is orange
 			if (bumpmap) {
 				glActiveTexture(GL_TEXTURE1);
-				glBindTexture(GL_TEXTURE_2D, TextureArray[ORANGE_Norm]); //normal.tga
+				glBindTexture(GL_TEXTURE_2D, TextureArray[ORANGE_NORM]); //normal.tga
 				glUniform1i(texMode_uniformId, 2);
 				glUniform1i(tex_normalMap_loc, 1);
 			}
@@ -348,17 +363,19 @@ void renderObject(Object* obj) {
 
 		loc = glGetUniformLocation(shader.getProgramIndex(), "mergeTextureWithColor");
 		glUniform1i(loc, part.mesh.mat.mergeTextureWithColor);
+		loc = glGetUniformLocation(shader.getProgramIndex(), "isHUD");
+		glUniform1i(loc, part.mesh.mat.isHUD);
 
 		if (part.mesh.mat.texIndices[0] == TREE_TEX) {
 			float worldPos[3]{ part.position[0], part.position[1], part.position[2] };
 
 			pushMatrix(MODEL);
 			translate(MODEL, part.position[0], part.position[1], part.position[2]);
+
 			if (cameraProjection == Camera::PERSPECTIVE)
 				l3dBillboardSphericalBegin(camWorld, worldPos);
 			else if (cameraProjection == Camera::CAR)
 				l3dBillboardCylindricalBegin(camWorld, worldPos);
-
 		}
 
 		// send the material
@@ -492,9 +509,7 @@ void render_flare(FLARE_DEF* flare, int lx, int ly, int* m_viewport) {
 			popMatrix(MODEL);
 		}
 	}
-	glEnable(GL_DEPTH_TEST);
 	glEnable(GL_CULL_FACE);
-	//glDisable(GL_BLEND);
 }
 
 void renderHUDShapes() {
@@ -505,36 +520,47 @@ void renderHUDShapes() {
 	loadIdentity(MODEL);
 	loadIdentity(VIEW);
 	loadIdentity(PROJECTION);
-
-	pushMatrix(VIEW);
-	loadIdentity(VIEW); //viewer at World origin, looking down at negative z direction
-	ortho(-windowWidth * 0.5f, windowWidth * 0.5f, -windowHeight * 0.5f, windowHeight * 0.5f, -1, 1);
-
+	
+	ortho(-1, 1, -1, 1, -1, 1);
+	
 	glDisable(GL_DEPTH_TEST);
 	glDisable(GL_CULL_FACE);
-	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
-	//renderObject(pauseQuad);
-
-	glEnable(GL_DEPTH_TEST);
-	glEnable(GL_CULL_FACE);
+	if (gameOver) {
+		renderObject(gameOverQuad);
+		renderObject(restartQuad);
+	}
+	else if (paused) {
+		renderObject(pauseQuad);
+	}
+	renderObject(lives);
 
 	popMatrix(MODEL);
 	popMatrix(VIEW);
 	popMatrix(PROJECTION);
 }
 
+void renderTextString(string text, float centerX, float centerY, float scale, float colorR, float colorG, float colorB) {
+	float textScale = scale * windowHeight;
+	float width = stringWidth(text) * textScale;
+	float height = stringHeight(text) * textScale;
+	RenderText(shaderText, text,
+		windowWidth * centerX - width / 2,
+		windowHeight * centerY - height / 2,
+		textScale, colorR, colorG, colorB);
+}
+
 void renderText() {
 	//Render text (bitmap fonts) in screen coordinates. So use ortoghonal projection with viewport coordinates.
 	glDisable(GL_DEPTH_TEST);
-	
+
 	int m_viewport[4];
 	glGetIntegerv(GL_VIEWPORT, m_viewport);
 
 	pushMatrix(MODEL);
 	pushMatrix(VIEW);
 	pushMatrix(PROJECTION);
-	
+
 	loadIdentity(MODEL);
 	loadIdentity(VIEW);
 	loadIdentity(PROJECTION);
@@ -545,12 +571,13 @@ void renderText() {
 	RenderText(shaderText, "Angle " + std::to_string(car->getAngle()) + " deg", 25.0f, 75.0f, 0.5f, 0.5f, 0.8f, 0.2f);
 	RenderText(shaderText, "Speed " + std::to_string(car->getSpeed()), 25.0f, 50.0f, 0.5f, 0.5f, 0.2f, 0.8f);
 	RenderText(shaderText, "Angular speed " + std::to_string(car->getAngularSpeed()), 25.0f, 25.0f, 0.5f, 0.5f, 0.8f, 0.2f);
-	
-	if (paused) {
-		float HUDscale = fminf(windowWidth, windowHeight);
-		
-		RenderText(shaderText, "GAME PAUSED", windowWidth * 0.243f, windowHeight * 0.465f + 0.25f,
-			0.002f * HUDscale, 1.0f, 1.0f, 1.0f);
+
+	if (gameOver) {
+		renderTextString("GAME OVER", 0.5f, 0.65f, 0.003f, 1.0f, 0.3f, 0.2f);
+		renderTextString("Press R to restart.", 0.5f, 0.35f, 0.0015f, 1.0f, 1.0f, 1.0f);
+	}
+	else if (paused) {
+		renderTextString("GAME PAUSED", 0.5f, 0.65f, 0.002f, 1.0f, 1.0f, 1.0f);
 	}
 
 	popMatrix(MODEL);
@@ -614,8 +641,6 @@ void renderFirework(Firework* particle) {
 
 			popMatrix(MODEL);
 			popMatrix(MODEL);
-
-
 		}
 		else num_dead_particles++;
 	}
@@ -631,6 +656,7 @@ void renderSkybox() {
 
 	//it won't write anything to the zbuffer; all subsequently drawn scenery to be in front of the sky box. 
 	glDepthMask(GL_FALSE);
+	glEnable(GL_DEPTH_TEST);
 	glFrontFace(GL_CW); // set clockwise vertex order to mean the front
 
 	pushMatrix(MODEL);
@@ -660,7 +686,6 @@ void renderSkybox() {
 		glDrawElements(part.mesh.type, part.mesh.numIndexes, GL_UNSIGNED_INT, 0);
 		glBindVertexArray(0);
 	}
-	
 
 	popMatrix(MODEL);
 	popMatrix(VIEW);
@@ -669,10 +694,18 @@ void renderSkybox() {
 	//glBindTexture(GL_TEXTURE_CUBE_MAP, 0);
 }
 
+void resetUniforms() {
+	GLint loc;
+	loc = glGetUniformLocation(shader.getProgramIndex(), "mergeTextureWithColor");
+	glUniform1i(loc, false);
+	loc = glGetUniformLocation(shader.getProgramIndex(), "isHUD");
+	glUniform1i(loc, false);
+}
+
 void renderScene(void) {
 
 	int currentTime = glutGet(GLUT_ELAPSED_TIME);
-	int deltaTime = paused ? 0 : currentTime - lastTime;
+	int deltaTime = (gameOver || paused) ? 0 : currentTime - lastTime;
 
 	FrameCount++;
 
@@ -686,6 +719,8 @@ void renderScene(void) {
 	
 	// use our shader
 	glUseProgram(shader.getProgramIndex());
+
+	resetUniforms();
 
 	renderSkybox();
 	
@@ -716,7 +751,6 @@ void renderScene(void) {
 			fireworks.clear();
 			printf("All particles dead\n");
 		}
-
 	}
 
 	/*GLint loc;
@@ -782,16 +816,25 @@ void renderScene(void) {
 	}
 
 	if (showText) {
-		//renderHUDShapes();
+		renderHUDShapes();
 		renderText();
 	}
-	
+
+	if (lives->areEmpty())
+		gameOver = true;
 
 	lastTime = currentTime;
 	glBindTexture(GL_TEXTURE_2D, 0);
 	glBindTexture(GL_TEXTURE_CUBE_MAP, 0);
 	glDisable(GL_BLEND);
 	glutSwapBuffers();
+}
+
+void restartGame() {
+	paused = false;
+	gameOver = false;
+	lives->reset();
+	car->reset();
 }
 
 // ------------------------------------------------------------
@@ -801,12 +844,12 @@ void renderScene(void) {
 
 void processKeys(unsigned char key, int xx, int yy)
 {
-	switch(key) {
+	switch (key) {
 	case 27:
 		glutLeaveMainLoop();
 		break;
 
-	case 'c': 
+	case 'c':
 		std::printf("Camera Spherical Coordinates (%f, %f, %f)\n", alpha, beta, r);
 		break;
 	case 'm': glEnable(GL_MULTISAMPLE); break;
@@ -864,7 +907,7 @@ void processKeys(unsigned char key, int xx, int yy)
 			paused = !paused;
 		}
 		break;
-	
+
 	case 'k': //fireworks
 		if (!fireworkKey) {
 			if (firework) {
@@ -878,20 +921,26 @@ void processKeys(unsigned char key, int xx, int yy)
 			}
 		}
 		break;
-	
-	case 'g': // flare
-		if (candlesKey) flare = false;
-		else
-			if (flare) {
-				flare = false;
 
-			}
-			else flare = true;
+	case 'g': // flare
+		if (!flareKey) {
+			flareKey = true;
+			flare = !flare;
+		}
 		break;
 
 	case 'b': // bumpmap
-		if (bumpmap) bumpmap = false;
-		else bumpmap = true;
+		if (!bumpmapKey) {
+			bumpmapKey = true;
+			bumpmap = !bumpmap;
+		}
+		break;
+
+	case 'r': // restart
+		if (!pausedKey) {
+			restartKey = true;
+			restartGame();
+		}
 		break;
 	}
 }
@@ -921,6 +970,8 @@ void processKeysUp(unsigned char key, int xx, int yy)
 		pausedKey = false; break;
 	case 'g':
 		flareKey = false; break;
+	case 'b':
+		bumpmapKey = false; break;
 	case 'k':
 		fireworkKey = false; break;
 	}
@@ -1079,14 +1130,15 @@ GLuint setupShaders() {
 void createScene() {
 	//Texture Object definition
 
-	glGenTextures(8, TextureArray);
+	glGenTextures(NUM_TEXTURES, TextureArray);
 	Texture2D_Loader(TextureArray, "img/stone.tga", STONE_TEX);
 	Texture2D_Loader(TextureArray, "img/lightwood.tga", WOOD_TEX);
 	Texture2D_Loader(TextureArray, "img/checker.png", CHECKERS_TEX);
 	Texture2D_Loader(TextureArray, "img/orangeTex.png", ORANGE_TEX);
-	Texture2D_Loader(TextureArray, "img/Orange_001_NORM.jpg", ORANGE_Norm);
+	Texture2D_Loader(TextureArray, "img/Orange_001_NORM.jpg", ORANGE_NORM);
 	Texture2D_Loader(TextureArray, "img/tree.tga", TREE_TEX);
 	Texture2D_Loader(TextureArray, "img/particle.tga", PARTICLE_TEX);
+	Texture2D_Loader(TextureArray, "img/heart.png", LIFE_TEX);
 	Texture2D_Loader(TextureArray, "img/sugar.jpg", SUGAR_TEX);
 
 	//Sky Box Texture Object
@@ -1095,7 +1147,7 @@ void createScene() {
 	TextureCubeMap_Loader(TextureArray, filenames, SKY_TEX);
 
 	//Flare elements textures
-	glGenTextures(5, FlareTextureArray);
+	glGenTextures(NUM_FLARE_TEXTURES, FlareTextureArray);
 	Texture2D_Loader(FlareTextureArray, "img/crcl.tga", 0);
 	Texture2D_Loader(FlareTextureArray, "img/flar.tga", 1);
 	Texture2D_Loader(FlareTextureArray, "img/hxgn.tga", 2);
@@ -1105,10 +1157,11 @@ void createScene() {
 	//Create skybox
 	skybox = new Skybox();
 
-	//createTable();
 	gameObjects.push_back(new Table());
+
+	lives = new Lives(-0.6f, 0.8f, 0.08f, NUM_LIVES);
 	
-	car = new Car(&shader, 3.2f, 1.0f);
+	car = new Car(&shader, 3.2f, 1.0f, lives);
 	gameObjects.push_back(car);
 
 	for (int o = 0; o < NUM_ORANGES; o++)
@@ -1163,9 +1216,9 @@ void createScene() {
 
 	gameObjects.push_back(new Pawn());
 
-	gameObjects.push_back(new ScreenQuad());
-
-	pauseQuad = new ScreenQuad();
+	pauseQuad = new ScreenQuad(0, 0.3f, 0.15f, 0.2f);
+	gameOverQuad = new ScreenQuad(0, 0.3f, 0.2f, 0.2f);
+	restartQuad = new ScreenQuad(0, -0.3f, 0.1f, 0.15f);
 
 	// create geometry and VAO of the quad for flare elements
 	flareQuad = createQuad(1, 1);
@@ -1214,7 +1267,7 @@ void init()
 	camZ = r * cos(alpha * DEG_TO_RAD) * cos(beta * DEG_TO_RAD);
 	camY = r *   						 sin(beta * DEG_TO_RAD);
 
-	cameraProjection = Camera::ORTHOGONAL;
+	cameraProjection = Camera::CAR;
 
 	createScene();
 	

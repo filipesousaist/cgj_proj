@@ -93,5 +93,6 @@ void Orange::handleCollision() {
 
 	if (collision) {
 		car->reset();
+		car->loseLife();
 	}
 }

@@ -23,6 +23,7 @@ struct Material{
 	int texCount;
 	int texIndices[2];
 	bool mergeTextureWithColor;
+	bool isHUD;
 };
 // A model can be made of many meshes. Each is stored  in the following structure
 struct MyMesh {
