@@ -382,6 +382,7 @@ void renderObject(Object* obj) {
 		glBindVertexArray(part.mesh.vao);
 
 		if (!shader.isProgramValid()) {
+			cout << shader.getProgramInfoLog();
 			std::printf("Program Not Valid!\n");
 			exit(1);
 		}
@@ -608,9 +609,9 @@ void renderFirework(Firework* particle) {
 }
 
 void renderSkybox() {
-	glActiveTexture(GL_TEXTURES[0]);
+	glActiveTexture(GL_TEXTURE2);
 	glBindTexture(GL_TEXTURE_CUBE_MAP, TextureArray[SKY_TEX]);
-	glUniform1i(tex_skyBoxMap_loc, 0);
+	glUniform1i(tex_skyBoxMap_loc, 2);
 
 	glUniform1i(texMode_uniformId, 3);
 
