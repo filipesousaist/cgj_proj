@@ -24,7 +24,6 @@ uniform sampler2D normalMap;
 uniform samplerCube skyBoxMap;
 in vec3 skyboxTexCoord;
 
-
 struct Materials {
 	vec4 diffuse;
 	vec4 ambient;
@@ -57,7 +56,7 @@ void main() {
 		else
 			colorOut = texture(texmap, DataIn.texCoord);
 		if (colorOut.a == 0)
-			;//discard;
+			discard;
 		return;
 	}
 
@@ -240,7 +239,5 @@ void main() {
 		colorOut = vec4(final_color, colorOut.a);
 	}
 
-		colorOut = vec4(colorOut.rgb, mat.diffuse.a);
-
-
+	colorOut = vec4(colorOut.rgb, mat.diffuse.a);
 }
