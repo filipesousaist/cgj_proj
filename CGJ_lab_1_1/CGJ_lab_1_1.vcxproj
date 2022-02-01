@@ -173,6 +173,7 @@
     <ClCompile Include="Object.cpp" />
     <ClCompile Include="Orange.cpp" />
     <ClCompile Include="Pawn.cpp" />
+    <ClCompile Include="rearViewMirror.cpp" />
     <ClCompile Include="ScreenQuad.cpp" />
     <ClCompile Include="Skybox.cpp" />
     <ClCompile Include="Table.cpp" />
@@ -200,6 +201,7 @@
     <ClInclude Include="Object.h" />
     <ClInclude Include="Orange.h" />
     <ClInclude Include="Pawn.h" />
+    <ClInclude Include="RearViewMirror.h" />
     <ClInclude Include="ScreenQuad.h" />
     <ClInclude Include="Skybox.h" />
     <ClInclude Include="src\resource.h" />

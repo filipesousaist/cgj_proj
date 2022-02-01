@@ -47,6 +47,7 @@
 #include "Utils.h"
 #include <flare.h>
 #include <Skybox.h>
+#include <RearViewMirror.h>
 
 #define frand()		((float)rand()/RAND_MAX)
 
@@ -86,6 +87,8 @@ const int NUM_LIVES = 5;
 Lives* lives;
 
 MyMesh flareQuad;
+
+ScreenQuad* rearViewMirror;
 
 Skybox* skybox;
 
@@ -173,6 +176,9 @@ bool bumpmapKey = false;
 bool firework = false;
 bool fireworkKey = false;
 
+bool rearView = false;
+bool rearViewKey = false;
+
 inline double clamp(const double x, const double min, const double max) {
 	return (x < min ? min : (x > max ? max : x));
 }
@@ -240,6 +246,7 @@ void changeSize(int w, int h) {
 	pauseQuad->resize(w, h);
 	gameOverQuad->resize(w, h);
 	restartQuad->resize(w, h);
+	rearViewMirror->resize(w, h);
 	lives->resize(w, h);
 
 	// Prevent a divide by zero, when window is too short
@@ -680,6 +687,63 @@ void renderSkybox() {
 	glBindTexture(GL_TEXTURE_CUBE_MAP, 0);
 }
 
+void renderRearView() {
+	glEnable(GL_STENCIL_TEST);
+	pushMatrix(MODEL);
+	pushMatrix(VIEW);
+	pushMatrix(PROJECTION);
+
+	loadIdentity(MODEL);
+	loadIdentity(VIEW);
+	loadIdentity(PROJECTION);
+
+	ortho(-1, 1, -1, 1, -1, 1);
+
+	glClear(GL_STENCIL_BUFFER_BIT);
+
+	glStencilFunc(GL_NEVER, 0x1, 0x1);
+	glStencilOp(GL_REPLACE, GL_KEEP, GL_KEEP);
+
+	renderObject(rearViewMirror);
+
+	popMatrix(MODEL);
+	popMatrix(VIEW);
+	popMatrix(PROJECTION);
+
+	float x = car->getX();
+	float y = car->getY();
+	float z = car->getZ();
+
+	float dirX = cos(car->getAngle() * DEG_TO_RAD);
+	float dirZ = sin(car->getAngle() * DEG_TO_RAD);
+
+	float backCamX = x - dirX;
+	float backCamY = 5;
+	float backCamZ = z - dirZ;
+	
+	GLint loc;
+
+	loc = glGetUniformLocation(shader.getProgramIndex(), "headlights");
+	glUniform1i(loc, false);
+	//loc = glGetUniformLocation(shader.getProgramIndex(), "candles");
+	//glUniform1i(loc, false);
+
+	loadIdentity(VIEW);
+	loadIdentity(PROJECTION);
+	perspective(53.13f, camRatio, 1, 1000);
+	lookAt(backCamX, backCamY, backCamZ,
+		backCamX - dirX, backCamY * 0.9f, backCamZ + dirZ,
+		0, 1, 0);
+
+	glStencilFunc(GL_EQUAL, 0x1, 0x1);
+	glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
+
+	for (Object* obj : gameObjects)
+		renderObject(obj);
+
+	renderSkybox();
+}
+
 void resetUniforms() {
 	GLint loc;
 	loc = glGetUniformLocation(shader.getProgramIndex(), "mergeTextureWithColor");
@@ -721,6 +785,20 @@ void renderScene(void) {
 
 	for (Object* obj : gameObjects)
 		renderObject(obj);
+
+
+	if (rearView) {
+		renderRearView();
+	}
+	else {
+		glClearStencil(0x0);
+		glClear(GL_STENCIL_BUFFER_BIT);
+	}
+
+	glStencilFunc(GL_NOTEQUAL, 0x1, 0x1);
+	glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
+
+
 
 	for (Object* obj : gameObjects)
 		obj->handleCollision();
@@ -889,6 +967,13 @@ void processKeys(unsigned char key, int xx, int yy)
 			restartGame();
 		}
 		break;
+
+	case 'z': // rearView
+		if (!rearViewKey) {
+			rearViewKey = true;
+			rearView = !rearView;
+			// Create stencil
+		}
 	}
 }
 
@@ -921,7 +1006,9 @@ void processKeysUp(unsigned char key, int xx, int yy)
 		bumpmapKey = false; break;
 	case 'k':
 		fireworkKey = false; break;
-	}
+	case 'z':
+		rearViewKey = false; break;
+	} 
 }
 
 // ------------------------------------------------------------
@@ -1162,13 +1249,17 @@ void createScene() {
 	pauseQuad = new ScreenQuad(0, 0.3f, 0.15f, 0.2f);
 	gameOverQuad = new ScreenQuad(0, 0.3f, 0.2f, 0.2f);
 	restartQuad = new ScreenQuad(0, -0.3f, 0.1f, 0.15f);
+	
+	rearViewMirror = new ScreenQuad(0, 0.7f, 0.15f, 0.4f);
 
 	// create geometry and VAO of the quad for flare elements
 	flareQuad = createQuad(1, 1);
 	flareQuad.mat.texCount = 1;
 
+
 	//Load flare from file
 	loadFlareFile(&AVTflare, "flare.txt");
+
 }
 
 void init()

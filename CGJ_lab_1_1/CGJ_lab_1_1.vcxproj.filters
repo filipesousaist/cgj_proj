@@ -105,6 +105,9 @@
     <ClCompile Include="Lives.cpp">
       <Filter>Source Files\Objects</Filter>
     </ClCompile>
+    <ClCompile Include="rearViewMirror.cpp">
+      <Filter>Source Files\Objects</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="constants.h">
@@ -186,6 +189,9 @@
       <Filter>Header Files\Objects</Filter>
     </ClInclude>
     <ClInclude Include="Lives.h">
+      <Filter>Header Files\Objects</Filter>
+    </ClInclude>
+    <ClInclude Include="RearViewMirror.h">
       <Filter>Header Files\Objects</Filter>
     </ClInclude>
   </ItemGroup>
