@@ -27,7 +27,6 @@
 // Use Very Simple Libs
 #include "VSShaderlib.h"
 #include "AVTmathLib.h"
-#include "VertexAttrDef.h"
 #include "geometry.h"
 #include "Texture_Loader.h"
 #include "avtFreeType.h"
@@ -383,6 +382,7 @@ void renderObject(Object* obj) {
 		glBindVertexArray(part.mesh.vao);
 
 		if (!shader.isProgramValid()) {
+			cout << shader.getProgramInfoLog();
 			std::printf("Program Not Valid!\n");
 			exit(1);
 		}
@@ -609,9 +609,9 @@ void renderFirework(Firework* particle) {
 }
 
 void renderSkybox() {
-	glActiveTexture(GL_TEXTURES[0]);
+	glActiveTexture(GL_TEXTURE2);
 	glBindTexture(GL_TEXTURE_CUBE_MAP, TextureArray[SKY_TEX]);
-	glUniform1i(tex_skyBoxMap_loc, 0);
+	glUniform1i(tex_skyBoxMap_loc, 2);
 
 	glUniform1i(texMode_uniformId, 3);
 
@@ -1051,7 +1051,7 @@ void createScene() {
 	//createTable();
 	gameObjects.push_back(new Table());
 	
-	car = new Car(&shader, 2.0f, 1.0f);
+	car = new Car(&shader, 3.2f, 1.0f);
 	gameObjects.push_back(car);
 
 	for (int o = 0; o < NUM_ORANGES; o++)

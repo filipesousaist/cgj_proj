@@ -24,7 +24,7 @@ float spotLightPos[NUM_SPOT_LIGHTS][4]{
 
 Car::Car(VSShaderLib* shader, float sizeX, float sizeZ) {
 	angle = 0;
-	rollAngle = 0;
+	rollAngle = -90;
 
 	speed = 0;
 	angSpeed = 0;
@@ -35,7 +35,14 @@ Car::Car(VSShaderLib* shader, float sizeX, float sizeZ) {
 
 	this->shader = shader;
 
-	addParts(sizeX, sizeZ);
+	vector<struct MyMesh> carMeshes = createMeshFromAssimp("img/minicooper.obj");
+
+	for (MyMesh amesh : carMeshes) {
+		addPart(amesh, 0, 0.5f, 0,
+			0.02f, 0.02f, 0.02f,
+			90, 0, 1, 0);
+	}
+	//addParts(sizeX, sizeZ);
 }
 
 void Car::addParts(float sizeX, float sizeZ) {
@@ -228,7 +235,7 @@ void Car::stop() {
 
 void Car::reset() {
 	angle = 0;
-	rollAngle = 0;
+	rollAngle = -90;
 
 	speed = 0;
 	angSpeed = 0;
