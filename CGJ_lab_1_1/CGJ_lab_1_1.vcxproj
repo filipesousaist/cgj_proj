@@ -168,6 +168,7 @@
     <ClCompile Include="Firework.cpp" />
     <ClCompile Include="l3dBillboard.cpp" />
     <ClCompile Include="lightDemo.cpp" />
+    <ClCompile Include="Lives.cpp" />
     <ClCompile Include="MathUtils.cpp" />
     <ClCompile Include="Object.cpp" />
     <ClCompile Include="Orange.cpp" />
@@ -194,6 +195,7 @@
     <ClInclude Include="geometry.h" />
     <ClInclude Include="constants.h" />
     <ClInclude Include="l3DBillboard.h" />
+    <ClInclude Include="Lives.h" />
     <ClInclude Include="MathUtils.h" />
     <ClInclude Include="Object.h" />
     <ClInclude Include="Orange.h" />
@@ -219,6 +221,7 @@
     <Image Include="img\checker.png" />
     <Image Include="img\crcl.tga" />
     <Image Include="img\flar.tga" />
+    <Image Include="img\heart.png" />
     <Image Include="img\hxgn.tga" />
     <Image Include="img\lightwood.tga" />
     <Image Include="img\negx.jpg" />
