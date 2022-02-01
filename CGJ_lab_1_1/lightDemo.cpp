@@ -27,7 +27,6 @@
 // Use Very Simple Libs
 #include "VSShaderlib.h"
 #include "AVTmathLib.h"
-#include "VertexAttrDef.h"
 #include "geometry.h"
 #include "Texture_Loader.h"
 #include "avtFreeType.h"
@@ -984,7 +983,7 @@ void createScene() {
 	//createTable();
 	gameObjects.push_back(new Table());
 	
-	car = new Car(&shader, 2.0f, 1.0f);
+	car = new Car(&shader, 3.2f, 1.0f);
 	gameObjects.push_back(car);
 
 	for (int o = 0; o < NUM_ORANGES; o++)
