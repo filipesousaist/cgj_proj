@@ -38,13 +38,15 @@ Firework::Firework(float x, float y, float z, GLfloat v, GLfloat phi, GLfloat th
 }
 
 void Firework::updateParticle(float h) {
-	this->x += h * this->vx;
-	this->y += h * this->vy;
-	this->z += h * this->vz;
-	this->vx += h * this->ax;
-	this->vy += h * this->ay;
-	this->vz += h * this->az;
-	this->life -= this->fade;
+	if (h > 0) {
+		this->x += h * this->vx;
+		this->y += h * this->vy;
+		this->z += h * this->vz;
+		this->vx += h * this->ax;
+		this->vy += h * this->ay;
+		this->vz += h * this->az;
+		this->life -= this->fade;
+	}
 }
 
 void Firework::setDiffuse(float r, float g, float b) {

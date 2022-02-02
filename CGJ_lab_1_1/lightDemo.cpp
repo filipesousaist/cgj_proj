@@ -581,11 +581,11 @@ void renderText() {
 	glEnable(GL_DEPTH_TEST);
 }
 
-void renderFirework(Firework* particle) {
+void renderFirework(Firework* particle, int deltaTime) {
 	glEnable(GL_BLEND);
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 	vector<Object::Part>* parts = particle->getParts();
-	particle->updateParticle(0.033f);
+	particle->updateParticle(0.003f * deltaTime);
 
 	for (const Object::Part& part : *parts) {
 		GLint loc;
@@ -688,7 +688,7 @@ void renderSkybox() {
 	glBindTexture(GL_TEXTURE_CUBE_MAP, 0);
 }
 
-void renderRearView() {
+void renderRearView(int deltaTime) {
 	glEnable(GL_STENCIL_TEST);
 	pushMatrix(MODEL);
 	pushMatrix(VIEW);
@@ -746,7 +746,7 @@ void renderRearView() {
 
 	if (firework) {
 		for (Firework* particle : fireworks)
-			renderFirework(particle);
+			renderFirework(particle, deltaTime);
 
 		if (num_dead_particles == MAX_PARTICLES) {
 			firework = false;
@@ -799,17 +799,12 @@ void renderScene(void) {
 	for (Object* obj : gameObjects)
 		renderObject(obj);
 
-
-	
-
-
-
 	for (Object* obj : gameObjects)
 		obj->handleCollision();
 
 	if (firework) {
 		for (Firework* particle : fireworks)
-			renderFirework(particle);
+			renderFirework(particle, deltaTime);
 
 		if (num_dead_particles == MAX_PARTICLES) {
 			firework = false;
@@ -847,8 +842,8 @@ void renderScene(void) {
 		popMatrix(VIEW);
 	}
 
-	if (rearView) {
-		renderRearView();
+	if (rearView && cameraProjection == Camera::CAR) {
+		renderRearView(deltaTime);
 	}
 	else {
 		glClearStencil(0x0);
@@ -857,6 +852,7 @@ void renderScene(void) {
 
 	glStencilFunc(GL_NOTEQUAL, 0x1, 0x1);
 	glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
+
 	if (showText) {
 		renderHUDShapes();
 		renderText();
