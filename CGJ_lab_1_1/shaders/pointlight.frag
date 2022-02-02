@@ -26,6 +26,8 @@ in vec3 skyboxTexCoord;
 uniform int reflect_perFrag; //reflect vector calculated in the frag shader
 uniform mat4 m_View;
 
+
+
 struct Materials {
 	vec4 diffuse;
 	vec4 ambient;
