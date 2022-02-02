@@ -47,7 +47,7 @@ Car::Car(VSShaderLib* shader, float sizeX, float sizeZ, Lives* lives) {
 	this->shader = shader;
 	this->lives = lives;
 
-	char* filename = "free_car_001";
+	char* filename = "cars";
 
 	std::string filepath;
 
