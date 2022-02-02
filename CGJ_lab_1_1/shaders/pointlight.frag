@@ -15,6 +15,8 @@ uniform bool candles;
 uniform bool headlights;
 uniform bool fog;
 
+uniform bool shadowMode;
+
 // bumpmap
 uniform mat3 m_normal;
 uniform int texMode;
@@ -76,6 +78,8 @@ void main() {
 	vec3 e = normalize(DataIn.eye);
 	eyeDir = e;
 	new_n = n;
+
+	
 	// Directional light
 	if (day){
 		vec3 dl = normalize(directionalLightPos - DataIn.pos);
@@ -253,6 +257,9 @@ void main() {
 		vec3 final_color = mix(fogColor, colorOut.rgb, fogAmount);
 		colorOut = vec4(final_color, colorOut.a);
 	}
+	if(shadowMode) //constant color
+		colorOut *= vec4(0.1, 0.1, 0.1, 1.0);
 
 	colorOut = vec4(colorOut.rgb, mat.diffuse.a);
+
 }

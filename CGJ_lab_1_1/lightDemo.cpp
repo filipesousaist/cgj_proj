@@ -90,6 +90,8 @@ int num_dead_particles = 0;
 
 Car* car;
 
+Table* table;
+
 Camera cameraProjection;
 
 float camRatio;
@@ -759,7 +761,7 @@ void renderRearView(int deltaTime) {
 
 	loadIdentity(VIEW);
 	loadIdentity(PROJECTION);
-	perspective(53.13f, camRatio, 1, 1000);
+	perspective(53.13f, camRatio, 1, 10000);
 	lookAt(backCamX, backCamY, backCamZ,
 		backCamX - dirX, backCamY * 0.9f, backCamZ + dirZ,
 		0, 1, 0);
@@ -903,6 +905,198 @@ void renderCar() {
 	popMatrix(MODEL);
 }
 
+void draw_mirror() {
+	vector<Object::Part>* parts = table->getParts();
+
+	GLint loc;
+	for (const Object::Part& part : *parts) {
+		// textures
+		for (int t = 0; t < part.mesh.mat.texCount; t++) {
+			glUniform1i(texMode_uniformId, 0);
+			glActiveTexture(GL_TEXTURES[t]);
+			glBindTexture(GL_TEXTURE_2D, TextureArray[part.mesh.mat.texIndices[t]]);
+			glUniform1i(tex_loc[t], t);
+		}
+
+		loc = glGetUniformLocation(shader.getProgramIndex(), "mergeTextureWithColor");
+		glUniform1i(loc, part.mesh.mat.mergeTextureWithColor);
+		loc = glGetUniformLocation(shader.getProgramIndex(), "isHUD");
+		glUniform1i(loc, part.mesh.mat.isHUD);
+
+		// send the material
+		loc = glGetUniformLocation(shader.getProgramIndex(), "mat.ambient");
+		glUniform4fv(loc, 1, part.mesh.mat.ambient);
+		loc = glGetUniformLocation(shader.getProgramIndex(), "mat.diffuse");
+		glUniform4fv(loc, 1, part.mesh.mat.diffuse);
+		loc = glGetUniformLocation(shader.getProgramIndex(), "mat.specular");
+		glUniform4fv(loc, 1, part.mesh.mat.specular);
+		loc = glGetUniformLocation(shader.getProgramIndex(), "mat.shininess");
+		glUniform1f(loc, part.mesh.mat.shininess);
+		loc = glGetUniformLocation(shader.getProgramIndex(), "mat.texCount");
+		glUniform1i(loc, part.mesh.mat.texCount);
+		pushMatrix(MODEL);
+
+		translate(MODEL, table->getX(), table->getY(), table->getZ());
+		rotate(MODEL, table->getAngle(), 0, 1, 0);
+		rotate(MODEL, table->getRollAngle(), 0, 0, -1);
+		scale(MODEL, table->getScaleX(), table->getScaleY(), table->getScaleZ());
+		translate(MODEL, part.position[0], part.position[1], part.position[2]);
+		rotate(MODEL, part.angle, part.rotationAxis[0], part.rotationAxis[1], part.rotationAxis[2]);
+		scale(MODEL, part.scale[0], part.scale[1], part.scale[2]);
+
+		// send matrices to OGL
+		computeDerivedMatrix(PROJ_VIEW_MODEL);
+		glUniformMatrix4fv(vm_uniformId, 1, GL_FALSE, mCompMatrix[VIEW_MODEL]);
+		glUniformMatrix4fv(pvm_uniformId, 1, GL_FALSE, mCompMatrix[PROJ_VIEW_MODEL]);
+		computeNormalMatrix3x3();
+		glUniformMatrix3fv(normal_uniformId, 1, GL_FALSE, mNormal3x3);
+
+		// Render mesh
+		glBindVertexArray(part.mesh.vao);
+
+		if (!shader.isProgramValid()) {
+			cout << shader.getProgramInfoLog();
+			std::printf("Program Not Valid!\n");
+			exit(1);
+		}
+		glDrawElements(part.mesh.type, part.mesh.numIndexes, GL_UNSIGNED_INT, 0);
+		glBindVertexArray(0);
+
+		popMatrix(MODEL);
+	}
+}
+
+void renderMirror(int deltaTime) {
+	float res[4];
+	float mat[16];
+	GLfloat plano_chao[4] = { 0,1,0,0 };
+
+	glEnable(GL_DEPTH_TEST);
+	GLint shadowMode_uniformId = glGetUniformLocation(shader.getProgramIndex(), "shadowMode");
+
+
+	if (camY > 0) { //camera in front of the floor so render reflections and shadows. Inner product between the viewing direction and the normal of the ground
+		glEnable(GL_STENCIL_TEST);
+		glClear(GL_STENCIL_BUFFER_BIT);     // Escrever 1 no stencil buffer onde se for desenhar a reflexão e a sombra
+		glStencilFunc(GL_NEVER, 0x1, 0x1);
+		glStencilOp(GL_REPLACE, GL_REPLACE, GL_REPLACE);
+
+		// Fill stencil buffer with Ground shape; never rendered into color buffer
+		draw_mirror();
+
+		//iluminação phong
+		glUniform1i(shadowMode_uniformId, 0);
+
+		// Desenhar apenas onde o stencil buffer esta a 1
+		glStencilFunc(GL_EQUAL, 0x1, 0x1);
+		glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
+
+		// Render the reflected geometry
+
+		directionalLightPos[1] *= -1.0f;  //mirror the position of light
+		multMatrixPoint(VIEW, directionalLightPos, res);
+		GLint lPos_uniformId = glGetUniformLocation(shader.getProgramIndex(), "directionalLightPos");
+		glUniform3fv(lPos_uniformId, 1, res);
+
+		for (int i = 0; i < NUM_POINT_LIGHTS; i++) {
+			float res[4];
+			pointLightPos[i][1] *= -1.0f;  //mirror the position of light
+			multMatrixPoint(VIEW, pointLightPos[i], res);
+			stringstream ss;
+			ss.str("");
+			ss << "pointLightPos[" << i << "]";
+			GLint plPos_uniformId = glGetUniformLocation(shader.getProgramIndex(), ss.str().c_str());
+			glUniform3fv(plPos_uniformId, 1, res);
+		}
+
+		pushMatrix(MODEL);
+		scale(MODEL, 1.0f, -1.0f, 1.0f);
+		glCullFace(GL_FRONT);
+
+		for (Object* obj : gameObjects)
+			renderObject(obj);
+		renderCar();
+		//renderSkybox();
+
+		if (firework) {
+			for (Firework* particle : fireworks)
+				renderFirework(particle, deltaTime);
+
+			if (num_dead_particles == MAX_PARTICLES) {
+				firework = false;
+				num_dead_particles = 0;
+				fireworks.clear();
+				printf("All particles dead\n");
+			}
+		}
+
+		glCullFace(GL_BACK);
+		popMatrix(MODEL);
+
+		directionalLightPos[1] *= -1.0f;  //reset the light position
+		multMatrixPoint(VIEW, directionalLightPos, res);
+		lPos_uniformId = glGetUniformLocation(shader.getProgramIndex(), "directionalLightPos");
+		glUniform3fv(lPos_uniformId, 1, res);
+
+		for (int i = 0; i < NUM_POINT_LIGHTS; i++) {
+			float res[4];
+			pointLightPos[i][1] *= -1.0f;
+			multMatrixPoint(VIEW, pointLightPos[i], res);   //reset the light position
+			stringstream ss;
+			ss.str("");
+			ss << "pointLightPos[" << i << "]";
+			GLint plPos_uniformId = glGetUniformLocation(shader.getProgramIndex(), ss.str().c_str());
+			glUniform3fv(plPos_uniformId, 1, res);
+		}
+
+		glEnable(GL_BLEND);
+		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);   // Blend specular Ground with reflected geometry
+		draw_mirror();
+
+
+		// Render the Shadows
+		if (day) {
+			glUniform1i(shadowMode_uniformId, 1);  //Render with darker color
+			shadow_matrix(mat, plano_chao, res);
+
+			glDisable(GL_DEPTH_TEST);  //To force the shadow geometry to be rendered even if behind the floor
+
+			//Dark the color stored in color buffer
+			glBlendFunc(GL_DST_COLOR, GL_ZERO);
+			glStencilOp(GL_KEEP, GL_KEEP, GL_ZERO);
+
+			pushMatrix(MODEL);
+			multMatrix(MODEL, mat);
+			for (Object* obj : gameObjects)
+				renderObject(obj);
+			renderCar();
+
+			/*if (firework) {
+				for (Firework* particle : fireworks)
+					renderFirework(particle, deltaTime);
+
+				if (num_dead_particles == MAX_PARTICLES) {
+					firework = false;
+					num_dead_particles = 0;
+					fireworks.clear();
+					printf("All particles dead\n");
+				}
+			}*/
+			popMatrix(MODEL);
+		}
+		glDisable(GL_STENCIL_TEST);
+		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
+		glEnable(GL_DEPTH_TEST);
+		glUniform1i(shadowMode_uniformId, 0);
+	}
+	else {
+		glUniform1i(shadowMode_uniformId, 0);
+		draw_mirror();
+	}
+
+}
+
 void renderScene(void) {
 
 	int currentTime = glutGet(GLUT_ELAPSED_TIME);
@@ -923,7 +1117,6 @@ void renderScene(void) {
 
 	resetUniforms();
 
-	renderSkybox();
 	
 	//The glyph contains background colors and non-transparent for the actual character pixels. So we use the blending
 	glEnable(GL_BLEND);
@@ -936,15 +1129,15 @@ void renderScene(void) {
 
 	for (Object* obj : gameObjects)
 		obj->update(deltaTime);
+	
+	renderMirror(deltaTime);
+	renderSkybox();
 
 
 	for (Object* obj : gameObjects)
 		renderObject(obj);
 
 	renderCar();
-
-
-
 
 	for (Object* obj : gameObjects)
 		obj->handleCollision();
@@ -1353,7 +1546,7 @@ void createScene() {
 	//Create skybox
 	skybox = new Skybox();
 
-	gameObjects.push_back(new Table());
+	table = new Table();
 
 	lives = new Lives(-0.6f, 0.8f, 0.08f, NUM_LIVES);
 	
