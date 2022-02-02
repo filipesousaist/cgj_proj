@@ -170,6 +170,8 @@
     <ClCompile Include="lightDemo.cpp" />
     <ClCompile Include="Lives.cpp" />
     <ClCompile Include="MathUtils.cpp" />
+    <ClCompile Include="meshFromAssimp.cpp" />
+    <ClCompile Include="MirrorCube.cpp" />
     <ClCompile Include="Object.cpp" />
     <ClCompile Include="Orange.cpp" />
     <ClCompile Include="Pawn.cpp" />
@@ -197,6 +199,8 @@
     <ClInclude Include="l3DBillboard.h" />
     <ClInclude Include="Lives.h" />
     <ClInclude Include="MathUtils.h" />
+    <ClInclude Include="meshFromAssimp.h" />
+    <ClInclude Include="MirrorCube.h" />
     <ClInclude Include="Object.h" />
     <ClInclude Include="Orange.h" />
     <ClInclude Include="Pawn.h" />
@@ -221,7 +225,6 @@
     <Image Include="img\checker.png" />
     <Image Include="img\crcl.tga" />
     <Image Include="img\flar.tga" />
-    <Image Include="img\heart.png" />
     <Image Include="img\hxgn.tga" />
     <Image Include="img\lightwood.tga" />
     <Image Include="img\negx.jpg" />
@@ -236,6 +239,7 @@
     <Image Include="img\posz.jpg" />
     <Image Include="img\ring.tga" />
     <Image Include="img\stone.tga" />
+    <Image Include="img\sugar.jpg" />
     <Image Include="img\sun.tga" />
     <Image Include="img\tablecloth.png" />
   </ItemGroup>

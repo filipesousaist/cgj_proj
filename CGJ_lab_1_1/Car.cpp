@@ -9,6 +9,11 @@
 #include "constants.h"
 #include "Utils.h"
 #include "MathUtils.h"
+#include <meshFromAssimp.h>
+
+// assimp include files. These three are usually needed.
+#include "assimp/Importer.hpp"	//OO version Header!
+#include "assimp/scene.h"
 
 using namespace std;
 using namespace Utils;
@@ -17,6 +22,11 @@ using namespace MathUtils;
 const float ACC = 1e-5f;
 const float ANG_SPEED = 2e-2f;
 const float MAX_SPEED = 3e-3f;
+
+char model_dir[50];  //initialized by the user input at the console
+extern const aiScene* scene;
+
+
 
 float SPOT_LIGHT_POS[NUM_SPOT_LIGHTS][4]{
 	{1.0f, 0.5f, -0.25f, 1.0f},
@@ -37,7 +47,22 @@ Car::Car(VSShaderLib* shader, float sizeX, float sizeZ, Lives* lives) {
 	this->shader = shader;
 	this->lives = lives;
 
-	vector<MyMesh> carMeshes = createMeshFromAssimp("img/minicooper.obj");
+	char* filename = "free_car_001";
+
+	std::string filepath;
+
+	std::ostringstream oss;
+	oss << "img/" << filename << "/" << filename << ".obj";
+	filepath = oss.str();   //path of OBJ file in the VS project
+
+	if (!Import3DFromFile(filepath))
+		exit(1);
+
+	strcat(model_dir, "img/");
+	strcat(model_dir, filename);
+	strcat(model_dir, "/");
+
+	carMeshes = createMeshFromAssimp(scene);
 
 	for (MyMesh amesh : carMeshes) {
 		addPart(amesh, 0, 0.5f, 0,

@@ -23,6 +23,9 @@ uniform sampler2D normalMap;
 
 uniform samplerCube skyBoxMap;
 in vec3 skyboxTexCoord;
+uniform int reflect_perFrag; //reflect vector calculated in the frag shader
+uniform mat4 m_View;
+
 
 struct Materials {
 	vec4 diffuse;
@@ -49,6 +52,8 @@ in Data {
 
 out vec4 colorOut;
 
+const float reflect_factor = 0.9;
+
 void main() {
 	if (isHUD) {
 		if (mat.texCount == 0)
@@ -60,7 +65,7 @@ void main() {
 		return;
 	}
 
-	vec4 texel, texel1; 
+	vec4 texel, texel1, cube_texel; 
 
 	vec3 t, b, aux, eyeDir, new_n;
 	
@@ -203,18 +208,28 @@ void main() {
 		if (texMode == 3) //SkyBox
 		{
 			colorOut = texture(skyBoxMap, skyboxTexCoord);
-
 		}else{
 			colorOut = max(finalDiffuse + finalSpecular, mat.ambient);
 		}
 	else if (mat.texCount == 1) 
 	{
-		texel = texture(texmap, DataIn.texCoord);
-		if (texel.a <= 0.1) discard;
-		else if (mergeTextureWithColor) // mix 
-			colorOut = max(finalDiffuse * texel + finalSpecular, mat.ambient * texel);
-		else // diffuse color is replaced by texel color, with specular area or ambient (0.07 * texel)
-			colorOut = max(totalDiffuse * texel + finalSpecular, 0.07 * texel);
+		if(reflect_perFrag == 1) {  //reflected vector calculated here
+			vec3 reflected1 = vec3 (transpose(m_View) * vec4 (vec3(reflect(-e, n)), 0.0)); //reflection vector in world coord
+			reflected1.x= -reflected1.x;   
+			cube_texel = texture(skyBoxMap, reflected1);
+
+			texel = texture(texmap, DataIn.texCoord); 
+			vec4 aux_color = mix(texel, cube_texel, reflect_factor);
+			aux_color = max(finalDiffuse*aux_color + finalSpecular, 0.1*aux_color);
+			colorOut = vec4(aux_color.rgb, 1.0); 
+		}else{
+			texel = texture(texmap, DataIn.texCoord);
+			if (texel.a <= 0.1) discard;
+			else if (mergeTextureWithColor) // mix 
+				colorOut = max(finalDiffuse * texel + finalSpecular, mat.ambient * texel);
+			else // diffuse color is replaced by texel color, with specular area or ambient (0.07 * texel)
+				colorOut = max(totalDiffuse * texel + finalSpecular, 0.07 * texel);
+		}
 		
 	}
 	else if (mat.texCount == -1) // modulated texture for particle

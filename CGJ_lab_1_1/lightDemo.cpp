@@ -42,12 +42,18 @@
 #include "Table.h"
 #include "Tree.h"
 #include "Firework.h"
+#include "MirrorCube.h"
 #include "constants.h"
 #include "l3DBillboard.h"
 #include "Utils.h"
 #include "MathUtils.h"
 #include <flare.h>
 #include <Skybox.h>
+
+// assimp include files. These three are usually needed.
+#include "assimp/Importer.hpp"	//OO version Header!
+#include "assimp/scene.h"
+#include "assimp/postprocess.h"
 
 #define frand()		((float)rand()/RAND_MAX)
 
@@ -62,6 +68,14 @@ int WinX = 1024, WinY = 768;
 unsigned int FrameCount = 0;
 
 unsigned int lastTime = 0; // Time of last frame in milliseconds
+
+// Created an instance of the Importer class in the meshFromAssimp.cpp file
+extern Assimp::Importer importer;
+// the global Assimp scene object
+extern const aiScene* scene;
+
+// scale factor for the Assimp model to fit in the window
+extern float scaleFactor;
 
 //shaders
 VSShaderLib shader;  //geometry
@@ -110,12 +124,17 @@ GLint tex_loc[2];
 GLint texMode_uniformId;
 GLint tex_normalMap_loc;
 GLint tex_skyBoxMap_loc;
+GLint view_uniformId;
+GLint reflect_perFragment_uniformId;
+GLint diffMapCount_loc;
 
-const int NUM_TEXTURES = 9;
+const int NUM_TEXTURES = 10;
 GLuint TextureArray[NUM_TEXTURES];
 
 const int NUM_FLARE_TEXTURES = 5;
 GLuint FlareTextureArray[NUM_FLARE_TEXTURES];
+
+extern GLuint* assimpTextures;
 
 int windowWidth = 0;
 int windowHeight = 0;
@@ -355,6 +374,16 @@ void renderObject(Object* obj) {
 				glUniform1i(tex_normalMap_loc, 1);
 			}
 		}
+
+		if (part.mesh.mat.texIndices[0] == SUGAR_TEX) {
+			glUniformMatrix4fv(view_uniformId, 1, GL_FALSE, mMatrix[VIEW]);
+
+			glUniform1i(reflect_perFragment_uniformId, 1); //reflected vector calculated in the fragment shader
+		}
+		else {
+			glUniform1i(reflect_perFragment_uniformId, 0);
+		}
+
 		loc = glGetUniformLocation(shader.getProgramIndex(), "mergeTextureWithColor");
 		glUniform1i(loc, part.mesh.mat.mergeTextureWithColor);
 		loc = glGetUniformLocation(shader.getProgramIndex(), "isHUD");
@@ -685,7 +714,6 @@ void renderSkybox() {
 	popMatrix(VIEW);
 	glFrontFace(GL_CCW); // restore counter clockwise vertex order to mean the front
 	glDepthMask(GL_TRUE);
-	glBindTexture(GL_TEXTURE_CUBE_MAP, 0);
 }
 
 void renderRearView(int deltaTime) {
@@ -765,6 +793,116 @@ void resetUniforms() {
 	glUniform1i(loc, false);
 }
 
+void aiRecursive_render(const aiScene* sc, const aiNode* nd)
+{
+	GLint loc;
+
+	// Get node transformation matrix
+	aiMatrix4x4 m = nd->mTransformation;
+	// OpenGL matrices are column major
+	m.Transpose();
+
+	// save model matrix and apply node transformation
+	pushMatrix(MODEL);
+
+	float aux[16];
+	memcpy(aux, &m, sizeof(float) * 16);
+	multMatrix(MODEL, aux);
+
+	vector<Object::Part>* parts = car->getParts();
+
+	for (const Object::Part& part : *parts) {
+	}
+
+
+	// draw all meshes assigned to this node
+	for (unsigned int n = 0; n < nd->mNumMeshes; ++n) {
+
+
+		// send the material
+		loc = glGetUniformLocation(shader.getProgramIndex(), "mat.ambient");
+		glUniform4fv(loc, 1, car->carMeshes[nd->mMeshes[n]].mat.ambient);
+		loc = glGetUniformLocation(shader.getProgramIndex(), "mat.diffuse");
+		glUniform4fv(loc, 1, car->carMeshes[nd->mMeshes[n]].mat.diffuse);
+		loc = glGetUniformLocation(shader.getProgramIndex(), "mat.specular");
+		glUniform4fv(loc, 1, car->carMeshes[nd->mMeshes[n]].mat.specular);
+		loc = glGetUniformLocation(shader.getProgramIndex(), "mat.emissive");
+		glUniform4fv(loc, 1, car->carMeshes[nd->mMeshes[n]].mat.emissive);
+
+		loc = glGetUniformLocation(shader.getProgramIndex(), "mat.texCount");
+		glUniform1i(loc, 1);
+		glUniform1i(reflect_perFragment_uniformId, 0);
+
+		if (car->carMeshes[nd->mMeshes[n]].mat.texCount > 0) {
+			// Bind texture
+			glActiveTexture(GL_TEXTURE0);
+			glBindTexture(GL_TEXTURE_2D, assimpTextures[car->carMeshes[nd->mMeshes[n]].texUnits[0]]);
+			glUniform1i(tex_loc[0], 0);
+		}
+
+		unsigned int  diffMapCount = 0;  //read 2 diffuse textures
+
+		glUniform1ui(diffMapCount_loc, 0);
+
+		if (car->carMeshes[nd->mMeshes[n]].mat.texCount != 0)
+			for (unsigned int i = 0; i < car->carMeshes[nd->mMeshes[n]].mat.texCount; ++i) {
+				if (car->carMeshes[nd->mMeshes[n]].texTypes[i] == DIFFUSE) {
+					if (diffMapCount == 0) {
+						diffMapCount++;
+						loc = glGetUniformLocation(shader.getProgramIndex(), "texmap");
+						glUniform1i(loc, car->carMeshes[nd->mMeshes[n]].texUnits[i]);
+						glUniform1ui(diffMapCount_loc, diffMapCount);
+					}
+					else if (diffMapCount == 1) {
+						diffMapCount++;
+						loc = glGetUniformLocation(shader.getProgramIndex(), "texmap1");
+						glUniform1i(loc, car->carMeshes[nd->mMeshes[n]].texUnits[i]);
+						glUniform1ui(diffMapCount_loc, diffMapCount);
+					}
+					else printf("Only supports a Material with a maximum of 2 diffuse textures\n");
+				}
+				else printf("Texture Map not supported\n");
+			}
+
+		// send matrices to OGL
+		computeDerivedMatrix(PROJ_VIEW_MODEL);
+		glUniformMatrix4fv(vm_uniformId, 1, GL_FALSE, mCompMatrix[VIEW_MODEL]);
+		glUniformMatrix4fv(pvm_uniformId, 1, GL_FALSE, mCompMatrix[PROJ_VIEW_MODEL]);
+		computeNormalMatrix3x3();
+		glUniformMatrix3fv(normal_uniformId, 1, GL_FALSE, mNormal3x3);
+
+		// bind VAO
+		glBindVertexArray(car->carMeshes[nd->mMeshes[n]].vao);
+
+		if (!shader.isProgramValid()) {
+			printf("Program Not Valid!\n");
+			exit(1);
+		}
+		// draw
+		glDrawElements(car->carMeshes[nd->mMeshes[n]].type, car->carMeshes[nd->mMeshes[n]].numIndexes, GL_UNSIGNED_INT, 0);
+		glBindVertexArray(0);
+	}
+
+	// draw all children
+	for (unsigned int n = 0; n < nd->mNumChildren; ++n) {
+		aiRecursive_render(sc, nd->mChildren[n]);
+	}
+	popMatrix(MODEL);
+	glUniform1ui(diffMapCount_loc, -1);
+}
+
+void renderCar() {
+	pushMatrix(MODEL);
+	
+	translate(MODEL, car->getX(), car->getY(), car->getZ());
+	rotate(MODEL, car->getAngle() + 90, 0, 1, 0);
+	scale(MODEL, 0.8f, 0.8f, 0.8f);
+
+	aiRecursive_render(scene, scene->mRootNode);
+
+	popMatrix(MODEL);
+}
+
 void renderScene(void) {
 
 	int currentTime = glutGet(GLUT_ELAPSED_TIME);
@@ -793,11 +931,20 @@ void renderScene(void) {
 
 	renderLights();
 
+	
+	car->update(deltaTime);
+
 	for (Object* obj : gameObjects)
 		obj->update(deltaTime);
 
+
 	for (Object* obj : gameObjects)
 		renderObject(obj);
+
+	renderCar();
+
+
+
 
 	for (Object* obj : gameObjects)
 		obj->handleCollision();
@@ -813,6 +960,7 @@ void renderScene(void) {
 			printf("All particles dead\n");
 		}
 	}
+
 
 	if (flare && candles) {
 		int flarePos[2];
@@ -863,6 +1011,7 @@ void renderScene(void) {
 
 	lastTime = currentTime;
 	glBindTexture(GL_TEXTURE_2D, 0);
+	glBindTexture(GL_TEXTURE_CUBE_MAP, 0);
 	glDisable(GL_BLEND);
 	glutSwapBuffers();
 }
@@ -1143,13 +1292,17 @@ GLuint setupShaders() {
 
 	texMode_uniformId = glGetUniformLocation(shader.getProgramIndex(), "texMode"); // different modes of texturing
 	pvm_uniformId = glGetUniformLocation(shader.getProgramIndex(), "m_pvm");
+	view_uniformId = glGetUniformLocation(shader.getProgramIndex(), "m_View");
 	model_uniformId = glGetUniformLocation(shader.getProgramIndex(), "m_Model");
 	vm_uniformId = glGetUniformLocation(shader.getProgramIndex(), "m_viewModel");
 	normal_uniformId = glGetUniformLocation(shader.getProgramIndex(), "m_normal");
 	tex_loc[0] = glGetUniformLocation(shader.getProgramIndex(), "texmap");
 	tex_loc[1] = glGetUniformLocation(shader.getProgramIndex(), "texmap1");
+	diffMapCount_loc = glGetUniformLocation(shader.getProgramIndex(), "diffMapCount");
 	tex_normalMap_loc = glGetUniformLocation(shader.getProgramIndex(), "normalMap");
 	tex_skyBoxMap_loc = glGetUniformLocation(shader.getProgramIndex(), "skyBoxMap");
+	reflect_perFragment_uniformId = glGetUniformLocation(shader.getProgramIndex(), "reflect_perFrag"); //reflection vector calculated in the frag shader
+
 
 
 	std::printf("InfoLog for Per Fragment Phong Lightning Shader\n%s\n\n", shader.getAllInfoLogs().c_str());
@@ -1182,6 +1335,7 @@ void createScene() {
 	Texture2D_Loader(TextureArray, "img/tree.tga", TREE_TEX);
 	Texture2D_Loader(TextureArray, "img/particle.tga", PARTICLE_TEX);
 	Texture2D_Loader(TextureArray, "img/heart.png", LIFE_TEX);
+	Texture2D_Loader(TextureArray, "img/sugar.jpg", SUGAR_TEX);
 
 	//Sky Box Texture Object
 	const char* filenames[] = { "img/posx.jpg", "img/negx.jpg", "img/posy.jpg", "img/negy.jpg", "img/posz.jpg", "img/negz.jpg" };
@@ -1204,7 +1358,7 @@ void createScene() {
 	lives = new Lives(-0.6f, 0.8f, 0.08f, NUM_LIVES);
 	
 	car = new Car(&shader, 3.2f, 1.0f, lives);
-	gameObjects.push_back(car);
+	//gameObjects.push_back(car);
 
 	for (int o = 0; o < NUM_ORANGES; o++)
 		gameObjects.push_back(new Orange(car));
@@ -1272,6 +1426,7 @@ void createScene() {
 	//Load flare from file
 	loadFlareFile(&AVTflare, "flare.txt");
 
+	gameObjects.push_back(new MirrorCube());
 }
 
 void init()

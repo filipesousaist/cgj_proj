@@ -3,7 +3,7 @@
 #include <vsShaderLib.h>
 
 #include "Object.h"
-#include "Lives.h"
+#include <Lives.h>
 
 
 class Car : public Object
@@ -39,6 +39,8 @@ private:
 
 public:
 	Car::Car(VSShaderLib* shader, float sizeX, float sizeZ, Lives* lives);
+
+	vector<MyMesh> carMeshes;
 
 	void accelerate(bool active);
 	void accelerateBack(bool active);
