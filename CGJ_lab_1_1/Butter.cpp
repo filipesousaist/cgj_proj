@@ -17,7 +17,7 @@ Butter::Butter(float x, float y, float z, float sizeX, float sizeZ, Car* car) {
 	float diff[] = { 0.8f, 0.8f, 0.2f, 1.0f };
 	float spec[] = { 0.2f, 0.2f, 0.2f, 1.0f };
 	float emissive[] = { 0.0f, 0.0f, 0.0f, 1.0f };
-	float shininess = 80.0f;
+	float shininess = 100.0f;
 	int* texIndices = NULL;
 	bool mergeTextureWithColor = false;
 
@@ -32,11 +32,11 @@ Butter::Butter(float x, float y, float z, float sizeX, float sizeZ, Car* car) {
 	setMeshProperties(&amesh, amb, diff, spec, emissive, shininess, texIndices, mergeTextureWithColor);
 
 	addPart(amesh, -sizeX / 2, 0, -sizeZ / 2,
-		sizeX, 0.5f, sizeZ);
+		sizeX, 0.75f, sizeZ);
 }
 
 void Butter::handleCollision() {
-	float mass = 0.05f;
+	float mass = 0.045f;
 	bool collision = false;
 
 	float angleRad = car->getAngle() * DEG_TO_RAD;

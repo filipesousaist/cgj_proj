@@ -20,8 +20,8 @@ using namespace Utils;
 using namespace MathUtils;
 
 const float ACC = 1e-5f;
-const float ANG_SPEED = 2e-2f;
-const float MAX_SPEED = 3e-3f;
+const float ANG_SPEED = 1.2e-2f;
+const float MAX_SPEED = 2.5e-3f;
 
 char model_dir[50];  //initialized by the user input at the console
 extern const aiScene* scene;
@@ -218,9 +218,14 @@ void Car::reset() {
 
 	accTang = accNorm = 0;
 
-	x = 0;
-	z = 0;
+	x = spawnX;
+	z = spawnZ;
+}
 
+void Car::setSpawnPoint(float x, float z)
+{
+	spawnX = x;
+	spawnZ = z;
 }
 
 void Car::loseLife() {

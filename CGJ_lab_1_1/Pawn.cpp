@@ -3,7 +3,7 @@
 
 using namespace Utils;
 
-Pawn::Pawn() {
+Pawn::Pawn(float x, float z) {
 	float amb[] = { 0.1f, 0.1f, 0.1f, 1.0f };
 	float diff[] = { 0.6f, 0.6f, 0.8f, 0.4f };
 	float spec[] = { 0.9f, 0.9f, 0.9f, 1.0f };
@@ -16,6 +16,6 @@ Pawn::Pawn() {
 	setMeshProperties(&amesh, amb, diff, spec, emissive, shininess, texIndices, mergeTextureWithColor);
 
 	this->addPart(amesh,
-		25.0f, 0.0f, 25.0f,
+		x, 0.0f, z,
 		3.0f, 3.0f, 3.0f);
 }

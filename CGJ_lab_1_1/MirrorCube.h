@@ -3,6 +3,6 @@
 class MirrorCube : public Object
 {
 public:
-	MirrorCube::MirrorCube();
+	MirrorCube::MirrorCube(float x, float z);
 };
 

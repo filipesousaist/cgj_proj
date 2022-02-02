@@ -14,8 +14,10 @@ using namespace MathUtils;
 
 const int RADIUS = 2;
 const float INITIAL_SPEED = 0.005f;
-const float SPEED_INCREASE = 0.004f;
-const float MAX_SPEED = 0.002f; //0.025f;
+const float SPEED_INCREASE = 0.005f;
+const float MAX_SPEED = 0.003f; //0.025f;
+
+vector<float*> Orange::spawnPoints;
 
 Orange::Orange(Car* car) {
 	spawnRandomly(INITIAL_SPEED);
@@ -23,10 +25,15 @@ Orange::Orange(Car* car) {
 	this->car = car;
 }
 
+void Orange::addSpawnPoint(float x, float z) {
+	spawnPoints.push_back(new float[] {x, z});
+}
+
 void Orange::spawnRandomly(float newSpeed) {
-	x = randFloat(-40, 40);
+	float* spawnPoint = Orange::spawnPoints.at(randInt(0, spawnPoints.size() - 1));
+	x = spawnPoint[0];
 	y = RADIUS;
-	z = randFloat(-40, 40);
+	z = spawnPoint[1];
 	speed = newSpeed;
 	angle = modAngle(randFloat(0, 360));
 	rollAngle = 0;

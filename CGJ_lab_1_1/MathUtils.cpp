@@ -27,3 +27,8 @@ float MathUtils::randFloat(float min, float max)
 {
 	return min + ((float) rand()) / RAND_MAX * (max - min);
 }
+
+int MathUtils::randInt(int min, int max)
+{
+	return min + rand() % (max - min + 1);
+}

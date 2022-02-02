@@ -31,6 +31,7 @@
 #include "Texture_Loader.h"
 #include "avtFreeType.h"
 
+#include "Map.h"
 #include "Object.h"
 #include "Butter.h"
 #include "Candle.h"
@@ -84,11 +85,11 @@ VSShaderLib shaderText;  //render bitmap text
 //File with the font
 constexpr char FONT_NAME[] = "fonts/arial.ttf";
 
+Map* gameMap;
+
 vector<Object*> gameObjects;
 vector<Firework*> fireworks;
 int num_dead_particles = 0;
-
-Car* car;
 
 Camera cameraProjection;
 
@@ -97,9 +98,6 @@ float camRatio;
 ScreenQuad* pauseQuad;
 ScreenQuad* gameOverQuad;
 ScreenQuad* restartQuad;
-
-const int NUM_LIVES = 5;
-Lives* lives;
 
 MyMesh flareQuad;
 
@@ -160,14 +158,16 @@ char s[32];
 
 float directionalLightPos[4] { 1.0f, 1000.0f, 1.0f, 0.0f };
 
-float pointLightPos[NUM_POINT_LIGHTS][4] {
+/*float pointLightPos[NUM_POINT_LIGHTS][4]{
 	{-35.0f, 4.0f, -35.0f, 1.0f},
 	{-35.0f, 4.0f, 35.0f, 1.0f},
 	{35.0f, 4.0f, -35.0f, 1.0f},
 	{35.0f, 4.0f, 35.0f, 1.0f},
 	{0.0f, 4.0f, -15.0f, 1.0f},
 	{0.0f, 4.0f, 15.0f, 1.0f}
-};
+};*/
+
+float pointLightPos[NUM_POINT_LIGHTS][4];
 
 bool day = true;
 bool dayKey = false;
@@ -267,7 +267,8 @@ void changeSize(int w, int h) {
 	gameOverQuad->resize(w, h);
 	restartQuad->resize(w, h);
 	rearViewMirror->resize(w, h);
-	lives->resize(w, h);
+	
+	gameMap->getLives()->resize(w, h);
 
 	// Prevent a divide by zero, when window is too short
 	if (h == 0)
@@ -282,6 +283,7 @@ void changeSize(int w, int h) {
 }
 
 void updateCarCamera() {
+	Car* car = gameMap->getCar();
 	float x = car->getX();
 	float y = car->getY();
 	float z = car->getZ();
@@ -492,18 +494,18 @@ void render_flare(FLARE_DEF* flare, int lx, int ly, int* m_viewport) {
 	for (i = 0; i < flare->nPieces; ++i)
 	{
 		// Position is interpolated along line between start and destination.
-		px = (int)((1.0f - flare->element[i].fDistance) * lx + flare->element[i].fDistance * dx);
-		py = (int)((1.0f - flare->element[i].fDistance) * ly + flare->element[i].fDistance * dy);
+		px = (int) ((1.0f - flare->element[i].fDistance) * lx + flare->element[i].fDistance * dx);
+		py = (int) ((1.0f - flare->element[i].fDistance) * ly + flare->element[i].fDistance * dy);
 		px = clampI(px, m_viewport[0], screenMaxCoordX);
 		py = clampI(py, m_viewport[1], screenMaxCoordY);
 
 		// Piece size are 0 to 1; flare size is proportion of screen width; scale by flaredist/maxflaredist.
-		width = (int)(scaleDistance * flarescale * flare->element[i].fSize);
+		width = (int) (scaleDistance * flarescale * flare->element[i].fSize);
 
 		// Width gets clamped, to allows the off-axis flaresto keep a good size without letting the elements get big when centered.
 		if (width > flaremaxsize)  width = flaremaxsize;
 
-		height = (int)((float)m_viewport[3] / (float)m_viewport[2] * (float)width);
+		height = (int) ((float) m_viewport[3] / (float) m_viewport[2] * (float) width);
 		memcpy(diffuse, flare->element[i].matDiffuse, 4 * sizeof(float));
 		diffuse[3] *= scaleDistance;   //scale the alpha channel
 
@@ -518,8 +520,8 @@ void render_flare(FLARE_DEF* flare, int lx, int ly, int* m_viewport) {
 			glActiveTexture(GL_TEXTURE0);
 			glBindTexture(GL_TEXTURE_2D, FlareTextureArray[flare->element[i].textureId]);
 			pushMatrix(MODEL);
-			translate(MODEL, (float)(px - width * 0.0f), (float)(py - height * 0.0f), 0.0f);
-			scale(MODEL, (float)width, (float)height, 1);
+			translate(MODEL, (float) (px - width * 0.0f), (float) (py - height * 0.0f), 0.0f);
+			scale(MODEL, (float) width, (float) height, 1);
 			computeDerivedMatrix(PROJ_VIEW_MODEL);
 			glUniformMatrix4fv(vm_uniformId, 1, GL_FALSE, mCompMatrix[VIEW_MODEL]);
 			glUniformMatrix4fv(pvm_uniformId, 1, GL_FALSE, mCompMatrix[PROJ_VIEW_MODEL]);
@@ -556,7 +558,7 @@ void renderHUDShapes() {
 	else if (paused) {
 		renderObject(pauseQuad);
 	}
-	renderObject(lives);
+	renderObject(gameMap->getLives());
 
 	popMatrix(MODEL);
 	popMatrix(VIEW);
@@ -589,6 +591,7 @@ void renderText() {
 	loadIdentity(PROJECTION);
 
 	ortho(m_viewport[0], m_viewport[0] + m_viewport[2] - 1, m_viewport[1], m_viewport[1] + m_viewport[3] - 1, -1, 1);
+	Car* car = gameMap->getCar();
 	RenderText(shaderText, "X " + std::to_string(car->getX()) + " m", 25.0f, 125.0f, 0.5f, 0.5f, 0.5f, 0.8f);
 	RenderText(shaderText, "Z " + std::to_string(car->getZ()) + " m", 25.0f, 100.0f, 0.5f, 0.5f, 0.5f, 0.8f);
 	RenderText(shaderText, "Angle " + std::to_string(car->getAngle()) + " deg", 25.0f, 75.0f, 0.5f, 0.5f, 0.8f, 0.2f);
@@ -610,11 +613,11 @@ void renderText() {
 	glEnable(GL_DEPTH_TEST);
 }
 
-void renderFirework(Firework* particle) {
+void renderFirework(Firework* particle, int deltaTime) {
 	glEnable(GL_BLEND);
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 	vector<Object::Part>* parts = particle->getParts();
-	particle->updateParticle(0.033f);
+	particle->updateParticle(0.003f * deltaTime);
 
 	for (const Object::Part& part : *parts) {
 		GLint loc;
@@ -716,7 +719,7 @@ void renderSkybox() {
 	glDepthMask(GL_TRUE);
 }
 
-void renderRearView() {
+void renderRearView(int deltaTime) {
 	glEnable(GL_STENCIL_TEST);
 	pushMatrix(MODEL);
 	pushMatrix(VIEW);
@@ -739,6 +742,7 @@ void renderRearView() {
 	popMatrix(VIEW);
 	popMatrix(PROJECTION);
 
+	Car* car = gameMap->getCar();
 	float x = car->getX();
 	float y = car->getY();
 	float z = car->getZ();
@@ -774,7 +778,7 @@ void renderRearView() {
 
 	if (firework) {
 		for (Firework* particle : fireworks)
-			renderFirework(particle);
+			renderFirework(particle, deltaTime);
 
 		if (num_dead_particles == MAX_PARTICLES) {
 			firework = false;
@@ -809,16 +813,11 @@ void aiRecursive_render(const aiScene* sc, const aiNode* nd)
 	memcpy(aux, &m, sizeof(float) * 16);
 	multMatrix(MODEL, aux);
 
+	Car* car = gameMap->getCar();
 	vector<Object::Part>* parts = car->getParts();
-
-	for (const Object::Part& part : *parts) {
-	}
-
 
 	// draw all meshes assigned to this node
 	for (unsigned int n = 0; n < nd->mNumMeshes; ++n) {
-
-
 		// send the material
 		loc = glGetUniformLocation(shader.getProgramIndex(), "mat.ambient");
 		glUniform4fv(loc, 1, car->carMeshes[nd->mMeshes[n]].mat.ambient);
@@ -894,6 +893,7 @@ void aiRecursive_render(const aiScene* sc, const aiNode* nd)
 void renderCar() {
 	pushMatrix(MODEL);
 	
+	Car* car = gameMap->getCar();
 	translate(MODEL, car->getX(), car->getY(), car->getZ());
 	rotate(MODEL, car->getAngle() + 90, 0, 1, 0);
 	scale(MODEL, 0.8f, 0.8f, 0.8f);
@@ -931,8 +931,7 @@ void renderScene(void) {
 
 	renderLights();
 
-	
-	car->update(deltaTime);
+	gameMap->getCar()->update(deltaTime);
 
 	for (Object* obj : gameObjects)
 		obj->update(deltaTime);
@@ -948,7 +947,7 @@ void renderScene(void) {
 
 	if (firework) {
 		for (Firework* particle : fireworks)
-			renderFirework(particle);
+			renderFirework(particle, deltaTime);
 
 		if (num_dead_particles == MAX_PARTICLES) {
 			firework = false;
@@ -957,7 +956,6 @@ void renderScene(void) {
 			printf("All particles dead\n");
 		}
 	}
-
 
 	if (flare && candles) {
 		int flarePos[2];
@@ -987,8 +985,8 @@ void renderScene(void) {
 		popMatrix(VIEW);
 	}
 
-	if (rearView) {
-		renderRearView();
+	if (rearView && cameraProjection == Camera::CAR) {
+		renderRearView(deltaTime);
 	}
 	else {
 		glClearStencil(0x0);
@@ -997,12 +995,13 @@ void renderScene(void) {
 
 	glStencilFunc(GL_NOTEQUAL, 0x1, 0x1);
 	glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
+
 	if (showText) {
 		renderHUDShapes();
 		renderText();
 	}
 
-	if (lives->areEmpty())
+	if (gameMap->getLives()->areEmpty())
 		gameOver = true;
 
 	lastTime = currentTime;
@@ -1015,8 +1014,8 @@ void renderScene(void) {
 void restartGame() {
 	paused = false;
 	gameOver = false;
-	lives->reset();
-	car->reset();
+	gameMap->getLives()->reset();
+	gameMap->getCar()->reset();
 }
 
 // ------------------------------------------------------------
@@ -1045,13 +1044,13 @@ void processKeys(unsigned char key, int xx, int yy)
 		cameraProjection = Camera::CAR; setCameraProjection(); break;
 
 	case 'w':
-		car->accelerate(true); break;
+		gameMap->getCar()->accelerate(true); break;
 	case 's':
-		car->accelerateBack(true); break;
+		gameMap->getCar()->accelerateBack(true); break;
 	case 'a':
-		car->turnLeft(true); break;
+		gameMap->getCar()->turnLeft(true); break;
 	case 'd':
-		car->turnRight(true); break;
+		gameMap->getCar()->turnRight(true); break;
 	case 'o': // night mode
 		if (!dayKey) {
 			dayKey = true;
@@ -1138,13 +1137,13 @@ void processKeysUp(unsigned char key, int xx, int yy)
 {
 	switch (key) {
 	case 'w':
-		car->accelerate(false); break;
+		gameMap->getCar()->accelerate(false); break;
 	case 's':
-		car->accelerateBack(false); break;
+		gameMap->getCar()->accelerateBack(false); break;
 	case 'a':
-		car->turnLeft(false); break;
+		gameMap->getCar()->turnLeft(false); break;
 	case 'd':
-		car->turnRight(false); break;
+		gameMap->getCar()->turnRight(false); break;
 	case 'o':
 		dayKey = false; break;
 	case 'p':
@@ -1325,7 +1324,7 @@ void createScene() {
 	glGenTextures(NUM_TEXTURES, TextureArray);
 	Texture2D_Loader(TextureArray, "img/stone.tga", STONE_TEX);
 	Texture2D_Loader(TextureArray, "img/lightwood.tga", WOOD_TEX);
-	Texture2D_Loader(TextureArray, "img/checker.png", CHECKERS_TEX);
+	Texture2D_Loader(TextureArray, "img/water_drops.jpeg", CHECKERS_TEX);
 	Texture2D_Loader(TextureArray, "img/orangeTex.png", ORANGE_TEX);
 	Texture2D_Loader(TextureArray, "img/Orange_001_NORM.jpg", ORANGE_NORM);
 	Texture2D_Loader(TextureArray, "img/tree.tga", TREE_TEX);
@@ -1348,65 +1347,14 @@ void createScene() {
 
 	//Create skybox
 	skybox = new Skybox();
-
-	gameObjects.push_back(new Table());
-
-	lives = new Lives(-0.6f, 0.8f, 0.08f, NUM_LIVES);
 	
-	car = new Car(&shader, 3.2f, 1.0f, lives);
-	//gameObjects.push_back(car);
+	gameMap = new Map(&shader);
 
-	for (int o = 0; o < NUM_ORANGES; o++)
-		gameObjects.push_back(new Orange(car));
+	float** pointLightPositions = gameMap->getPointLightPositions();
+	for (int i = 0; i < NUM_POINT_LIGHTS; i++)
+		memcpy(pointLightPos + i, pointLightPositions[i], 4 * sizeof(float));
 
-	float butterPositions[]{
-		14, 1,
-		19, -0.75f,
-		28, 1
-	};
-
-	float butterSizes[]{
-		2.0f, 1.0f,
-		2.0f, 1.0f,
-		1.0f, 2.0f
-	};
-	for (int i = 0; i < sizeof(butterPositions) / (sizeof(float) * 2); i++)
-	{
-		Butter* b = new Butter(
-			butterPositions[2 * i], 0, butterPositions[2 * i + 1],
-			butterSizes[2 * i], butterSizes[2 * i + 1], car);
-		gameObjects.push_back(b);
-	}
-
-	float signs[]{ -1, 1 };
-
-	for (int sign = 0; sign < 2; sign++) {
-		float zSign = signs[sign];
-
-		for (float x = -40.0f; x <= 40.0f; x += 2) {
-			Cheerio* c = new Cheerio(x, 0.1f, 3.0f * zSign, 0.4f, car);
-			gameObjects.push_back(c);
-		}
-	}
-
-
-	float candlePositions[] {
-		-35.0f, -35.0f,
-		-35.0f, 35.0f,
-		35.0f, -35.0f,
-		35.0f, 35.0f,
-		0.0f, -15.0f,
-		0.0, 15.0f
-	};
-
-	for (int i = 0; i < sizeof(candlePositions) / (2 * sizeof(float)); i++)
-		gameObjects.push_back(new Candle(
-			candlePositions[2 * i], 0, candlePositions[2 * i + 1], 3.5f));
-
-	gameObjects.push_back(new Tree(0, 2.5f, 25));
-	gameObjects.push_back(new Tree(0, 2.5f, -25));
-
-	gameObjects.push_back(new Pawn());
+	gameObjects = gameMap->getGameObjects();
 
 	pauseQuad = new ScreenQuad(0, 0.3f, 0.15f, 0.2f);
 	gameOverQuad = new ScreenQuad(0, 0.3f, 0.2f, 0.2f);
@@ -1422,7 +1370,7 @@ void createScene() {
 	//Load flare from file
 	loadFlareFile(&AVTflare, "flare.txt");
 
-	gameObjects.push_back(new MirrorCube());
+	//gameObjects.push_back(new MirrorCube());
 }
 
 void init()
@@ -1456,8 +1404,6 @@ void init()
 	glEnable(GL_TEXTURE_CUBE_MAP_SEAMLESS);
 	glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
 }
-
-
 
 // ------------------------------------------------------------
 //

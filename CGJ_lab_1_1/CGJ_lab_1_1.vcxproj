@@ -169,6 +169,7 @@
     <ClCompile Include="l3dBillboard.cpp" />
     <ClCompile Include="lightDemo.cpp" />
     <ClCompile Include="Lives.cpp" />
+    <ClCompile Include="Map.cpp" />
     <ClCompile Include="MathUtils.cpp" />
     <ClCompile Include="meshFromAssimp.cpp" />
     <ClCompile Include="MirrorCube.cpp" />
@@ -198,6 +199,7 @@
     <ClInclude Include="constants.h" />
     <ClInclude Include="l3DBillboard.h" />
     <ClInclude Include="Lives.h" />
+    <ClInclude Include="Map.h" />
     <ClInclude Include="MathUtils.h" />
     <ClInclude Include="meshFromAssimp.h" />
     <ClInclude Include="MirrorCube.h" />
@@ -238,10 +240,15 @@
     <Image Include="img\posy.jpg" />
     <Image Include="img\posz.jpg" />
     <Image Include="img\ring.tga" />
+    <Image Include="img\square-tiled-texture.jpg" />
     <Image Include="img\stone.tga" />
     <Image Include="img\sugar.jpg" />
     <Image Include="img\sun.tga" />
     <Image Include="img\tablecloth.png" />
+    <Image Include="img\water_drops.jpeg" />
+  </ItemGroup>
+  <ItemGroup>
+    <Text Include="map.txt" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
