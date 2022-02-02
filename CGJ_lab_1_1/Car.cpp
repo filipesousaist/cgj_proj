@@ -15,8 +15,8 @@ using namespace Utils;
 using namespace MathUtils;
 
 const float ACC = 1e-5f;
-const float ANG_SPEED = 2e-2f;
-const float MAX_SPEED = 3e-3f;
+const float ANG_SPEED = 1.2e-2f;
+const float MAX_SPEED = 2.5e-3f;
 
 float SPOT_LIGHT_POS[NUM_SPOT_LIGHTS][4]{
 	{1.0f, 0.5f, -0.25f, 1.0f},
@@ -193,9 +193,14 @@ void Car::reset() {
 
 	accTang = accNorm = 0;
 
-	x = 0;
-	z = 0;
+	x = spawnX;
+	z = spawnZ;
+}
 
+void Car::setSpawnPoint(float x, float z)
+{
+	spawnX = x;
+	spawnZ = z;
 }
 
 void Car::loseLife() {

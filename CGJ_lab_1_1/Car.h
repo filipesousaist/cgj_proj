@@ -5,7 +5,6 @@
 #include "Object.h"
 #include "Lives.h"
 
-
 class Car : public Object
 {
 private:
@@ -27,6 +26,9 @@ private:
 	bool canMoveBack = true;
 	bool canMoveFront = true;
 
+	float spawnX;
+	float spawnZ;
+
 	Lives* lives;
 
 	void movePosition(int deltaTime);
@@ -40,16 +42,17 @@ private:
 public:
 	Car::Car(VSShaderLib* shader, float sizeX, float sizeZ, Lives* lives);
 
+	void turnLeft(bool active);
+	void turnRight(bool active);
+
 	void accelerate(bool active);
 	void accelerateBack(bool active);
 
 	void stop();
 	void reset();
+	void setSpawnPoint(float x, float z);
 
 	void loseLife();
-
-	void turnLeft(bool active);
-	void turnRight(bool active);
 
 	float getSpeed() {
 		return speed;

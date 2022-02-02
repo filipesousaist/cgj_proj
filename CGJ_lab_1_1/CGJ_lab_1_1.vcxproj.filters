@@ -105,6 +105,9 @@
     <ClCompile Include="Lives.cpp">
       <Filter>Source Files\Objects</Filter>
     </ClCompile>
+    <ClCompile Include="Map.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="constants.h">
@@ -188,6 +191,9 @@
     <ClInclude Include="Lives.h">
       <Filter>Header Files\Objects</Filter>
     </ClInclude>
+    <ClInclude Include="Map.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="Dependencies.exe" />
@@ -265,5 +271,16 @@
     <Image Include="img\heart.png">
       <Filter>Resource Files\Images</Filter>
     </Image>
+    <Image Include="img\square-tiled-texture.jpg">
+      <Filter>Resource Files\Images</Filter>
+    </Image>
+    <Image Include="img\water_drops.jpeg">
+      <Filter>Resource Files\Images</Filter>
+    </Image>
+  </ItemGroup>
+  <ItemGroup>
+    <Text Include="map.txt">
+      <Filter>Resource Files</Filter>
+    </Text>
   </ItemGroup>
 </Project>
