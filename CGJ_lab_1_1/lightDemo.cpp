@@ -46,6 +46,7 @@
 #include "constants.h"
 #include "l3DBillboard.h"
 #include "Utils.h"
+#include "MathUtils.h"
 #include <flare.h>
 #include <Skybox.h>
 
@@ -58,6 +59,7 @@
 
 using namespace std;
 using namespace Utils;
+using namespace MathUtils;
 
 constexpr char CAPTION[] = "Lab 1.1";
 int WindowHandle = 0;
@@ -100,6 +102,8 @@ const int NUM_LIVES = 5;
 Lives* lives;
 
 MyMesh flareQuad;
+
+ScreenQuad* rearViewMirror;
 
 Skybox* skybox;
 
@@ -192,6 +196,9 @@ bool bumpmapKey = false;
 bool firework = false;
 bool fireworkKey = false;
 
+bool rearView = false;
+bool rearViewKey = false;
+
 inline double clamp(const double x, const double min, const double max) {
 	return (x < min ? min : (x > max ? max : x));
 }
@@ -214,6 +221,7 @@ void timer(int value)
     FrameCount = 0;
     glutTimerFunc(1000, timer, 0);
 }
+
 void initFireworks()
 {
 	for (int i = 0; i < MAX_PARTICLES; i++) {
@@ -254,11 +262,11 @@ void changeSize(int w, int h) {
 	windowWidth = w;
 	windowHeight = h;
 
-	// Update pause quad size and position
-	float scale = fminf(windowWidth, windowHeight);
+	// Update screen quads' size and position
 	pauseQuad->resize(w, h);
 	gameOverQuad->resize(w, h);
 	restartQuad->resize(w, h);
+	rearViewMirror->resize(w, h);
 	lives->resize(w, h);
 
 	// Prevent a divide by zero, when window is too short
@@ -443,13 +451,13 @@ void renderObject(Object* obj) {
 }
 
 void render_flare(FLARE_DEF* flare, int lx, int ly, int* m_viewport) {
-	int     dx, dy;          // Screen coordinates of "destination"
-	int     px, py;          // Screen coordinates of flare element
-	int		cx, cy;
-	float    maxflaredist, flaredist, flaremaxsize, flarescale, scaleDistance;
-	int     width, height, alpha;    // Piece parameters;
-	int     i;
-	float	diffuse[4];
+	int dx, dy; // Screen coordinates of "destination"
+	int px, py; // Screen coordinates of flare element
+	int	cx, cy;
+	float maxflaredist, flaredist, flaremaxsize, flarescale, scaleDistance;
+	int width, height, alpha; // Piece parameters;
+	int i;
+	float diffuse[4];
 
 	GLint loc;
 
@@ -473,8 +481,8 @@ void render_flare(FLARE_DEF* flare, int lx, int ly, int* m_viewport) {
 	flarescale = (int)(m_viewport[2] * flare->fScale);
 
 	// Destination is opposite side of centre from source
-	dx = clampi(cx + (cx - lx), m_viewport[0], screenMaxCoordX);
-	dy = clampi(cy + (cy - ly), m_viewport[1], screenMaxCoordY);
+	dx = clampI(cx + (cx - lx), m_viewport[0], screenMaxCoordX);
+	dy = clampI(cy + (cy - ly), m_viewport[1], screenMaxCoordY);
 
 	// Render each element. To be used Texture Unit 0
 
@@ -486,8 +494,8 @@ void render_flare(FLARE_DEF* flare, int lx, int ly, int* m_viewport) {
 		// Position is interpolated along line between start and destination.
 		px = (int)((1.0f - flare->element[i].fDistance) * lx + flare->element[i].fDistance * dx);
 		py = (int)((1.0f - flare->element[i].fDistance) * ly + flare->element[i].fDistance * dy);
-		px = clampi(px, m_viewport[0], screenMaxCoordX);
-		py = clampi(py, m_viewport[1], screenMaxCoordY);
+		px = clampI(px, m_viewport[0], screenMaxCoordX);
+		py = clampI(py, m_viewport[1], screenMaxCoordY);
 
 		// Piece size are 0 to 1; flare size is proportion of screen width; scale by flaredist/maxflaredist.
 		width = (int)(scaleDistance * flarescale * flare->element[i].fSize);
@@ -708,6 +716,75 @@ void renderSkybox() {
 	glDepthMask(GL_TRUE);
 }
 
+void renderRearView() {
+	glEnable(GL_STENCIL_TEST);
+	pushMatrix(MODEL);
+	pushMatrix(VIEW);
+	pushMatrix(PROJECTION);
+
+	loadIdentity(MODEL);
+	loadIdentity(VIEW);
+	loadIdentity(PROJECTION);
+
+	ortho(-1, 1, -1, 1, -1, 1);
+
+	glClear(GL_STENCIL_BUFFER_BIT);
+
+	glStencilFunc(GL_NEVER, 0x1, 0x1);
+	glStencilOp(GL_REPLACE, GL_KEEP, GL_KEEP);
+
+	renderObject(rearViewMirror);
+
+	popMatrix(MODEL);
+	popMatrix(VIEW);
+	popMatrix(PROJECTION);
+
+	float x = car->getX();
+	float y = car->getY();
+	float z = car->getZ();
+
+	float dirX = cos(car->getAngle() * DEG_TO_RAD);
+	float dirZ = sin(car->getAngle() * DEG_TO_RAD);
+
+	float backCamX = x - dirX;
+	float backCamY = 5;
+	float backCamZ = z - dirZ;
+	
+	GLint loc;
+
+	loc = glGetUniformLocation(shader.getProgramIndex(), "headlights");
+	glUniform1i(loc, false);
+	//loc = glGetUniformLocation(shader.getProgramIndex(), "candles");
+	//glUniform1i(loc, false);
+
+	loadIdentity(VIEW);
+	loadIdentity(PROJECTION);
+	perspective(53.13f, camRatio, 1, 1000);
+	lookAt(backCamX, backCamY, backCamZ,
+		backCamX - dirX, backCamY * 0.9f, backCamZ + dirZ,
+		0, 1, 0);
+
+	glStencilFunc(GL_EQUAL, 0x1, 0x1);
+	glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
+
+	for (Object* obj : gameObjects)
+		renderObject(obj);
+
+	renderSkybox();
+
+	if (firework) {
+		for (Firework* particle : fireworks)
+			renderFirework(particle);
+
+		if (num_dead_particles == MAX_PARTICLES) {
+			firework = false;
+			num_dead_particles = 0;
+			fireworks.clear();
+			printf("All particles dead\n");
+		}
+	}
+}
+
 void resetUniforms() {
 	GLint loc;
 	loc = glGetUniformLocation(shader.getProgramIndex(), "mergeTextureWithColor");
@@ -891,8 +968,8 @@ void renderScene(void) {
 
 		if (!project(pointLightPos[0], lightScreenPos, m_viewport))
 			printf("Error in getting projected light in screen\n");  //Calculate the window Coordinates of the light position: the projected position of light on viewport
-		flarePos[0] = clampi((int)lightScreenPos[0], m_viewport[0], m_viewport[0] + m_viewport[2] - 1);
-		flarePos[1] = clampi((int)lightScreenPos[1], m_viewport[1], m_viewport[1] + m_viewport[3] - 1);
+		flarePos[0] = clampI((int) lightScreenPos[0], m_viewport[0], m_viewport[0] + m_viewport[2] - 1);
+		flarePos[1] = clampI((int) lightScreenPos[1], m_viewport[1], m_viewport[1] + m_viewport[3] - 1);
 		popMatrix(MODEL);
 
 		//viewer looking down at  negative z direction
@@ -900,12 +977,24 @@ void renderScene(void) {
 		loadIdentity(PROJECTION);
 		pushMatrix(VIEW);
 		loadIdentity(VIEW);
-		ortho(m_viewport[0], m_viewport[0] + m_viewport[2] - 1, m_viewport[1], m_viewport[1] + m_viewport[3] - 1, -1, 1);
-		render_flare(&AVTflare, flarePos[0], flarePos[1], m_viewport);
+		if (lightScreenPos[2] < 1) {
+			ortho(m_viewport[0], m_viewport[0] + m_viewport[2] - 1, m_viewport[1], m_viewport[1] + m_viewport[3] - 1, -1, 1);
+			render_flare(&AVTflare, flarePos[0], flarePos[1], m_viewport);
+		}
 		popMatrix(PROJECTION);
 		popMatrix(VIEW);
 	}
 
+	if (rearView) {
+		renderRearView();
+	}
+	else {
+		glClearStencil(0x0);
+		glClear(GL_STENCIL_BUFFER_BIT);
+	}
+
+	glStencilFunc(GL_NOTEQUAL, 0x1, 0x1);
+	glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
 	if (showText) {
 		renderHUDShapes();
 		renderText();
@@ -1033,6 +1122,13 @@ void processKeys(unsigned char key, int xx, int yy)
 			restartGame();
 		}
 		break;
+
+	case 'z': // rearView
+		if (!rearViewKey) {
+			rearViewKey = true;
+			rearView = !rearView;
+			// Create stencil
+		}
 	}
 }
 
@@ -1065,7 +1161,9 @@ void processKeysUp(unsigned char key, int xx, int yy)
 		bumpmapKey = false; break;
 	case 'k':
 		fireworkKey = false; break;
-	}
+	case 'z':
+		rearViewKey = false; break;
+	} 
 }
 
 // ------------------------------------------------------------
@@ -1311,10 +1409,13 @@ void createScene() {
 	pauseQuad = new ScreenQuad(0, 0.3f, 0.15f, 0.2f);
 	gameOverQuad = new ScreenQuad(0, 0.3f, 0.2f, 0.2f);
 	restartQuad = new ScreenQuad(0, -0.3f, 0.1f, 0.15f);
+	
+	rearViewMirror = new ScreenQuad(0, 0.7f, 0.15f, 0.4f);
 
 	// create geometry and VAO of the quad for flare elements
 	flareQuad = createQuad(1, 1);
 	flareQuad.mat.texCount = 1;
+
 
 	//Load flare from file
 	loadFlareFile(&AVTflare, "flare.txt");
@@ -1426,11 +1527,11 @@ unsigned int getTextureId(char* name) {
 	}
 	return -1;
 }
-void    loadFlareFile(FLARE_DEF* flare, char* filename)
+void loadFlareFile(FLARE_DEF* flare, char* filename)
 {
-	int     n = 0;
+	int n = 0;
 	FILE* f;
-	char    buf[256];
+	char buf[256];
 	int fields;
 
 	memset(flare, 0, sizeof(FLARE_DEF));
@@ -1452,7 +1553,7 @@ void    loadFlareFile(FLARE_DEF* flare, char* filename)
 			fields = sscanf(buf, "%4s %lf %lf ( %f %f %f %f )", name, &dDist, &dSize, &color[3], &color[0], &color[1], &color[2]);
 			if (fields == 7)
 			{
-				for (int i = 0; i < 4; ++i) color[i] = clamp(color[i] / 255.0f, 0.0f, 1.0f);
+				for (int i = 0; i < 4; ++i) color[i] = clampD(color[i] / 255.0f, 0.0f, 1.0f);
 				id = getTextureId(name);
 				if (id < 0) printf("Texture name not recognized\n");
 				else
