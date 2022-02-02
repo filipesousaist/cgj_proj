@@ -171,6 +171,8 @@
     <ClCompile Include="Lives.cpp" />
     <ClCompile Include="Map.cpp" />
     <ClCompile Include="MathUtils.cpp" />
+    <ClCompile Include="meshFromAssimp.cpp" />
+    <ClCompile Include="MirrorCube.cpp" />
     <ClCompile Include="Object.cpp" />
     <ClCompile Include="Orange.cpp" />
     <ClCompile Include="Pawn.cpp" />
@@ -199,6 +201,8 @@
     <ClInclude Include="Lives.h" />
     <ClInclude Include="Map.h" />
     <ClInclude Include="MathUtils.h" />
+    <ClInclude Include="meshFromAssimp.h" />
+    <ClInclude Include="MirrorCube.h" />
     <ClInclude Include="Object.h" />
     <ClInclude Include="Orange.h" />
     <ClInclude Include="Pawn.h" />
@@ -223,7 +227,6 @@
     <Image Include="img\checker.png" />
     <Image Include="img\crcl.tga" />
     <Image Include="img\flar.tga" />
-    <Image Include="img\heart.png" />
     <Image Include="img\hxgn.tga" />
     <Image Include="img\lightwood.tga" />
     <Image Include="img\negx.jpg" />
@@ -239,6 +242,7 @@
     <Image Include="img\ring.tga" />
     <Image Include="img\square-tiled-texture.jpg" />
     <Image Include="img\stone.tga" />
+    <Image Include="img\sugar.jpg" />
     <Image Include="img\sun.tga" />
     <Image Include="img\tablecloth.png" />
     <Image Include="img\water_drops.jpeg" />

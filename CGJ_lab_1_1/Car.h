@@ -42,6 +42,8 @@ private:
 public:
 	Car::Car(VSShaderLib* shader, float sizeX, float sizeZ, Lives* lives);
 
+	vector<MyMesh> carMeshes;
+
 	void turnLeft(bool active);
 	void turnRight(bool active);
 

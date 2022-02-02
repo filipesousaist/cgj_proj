@@ -8,6 +8,7 @@
 #include "Candle.h"
 #include "Cheerio.h"
 #include "Butter.h"
+#include "MirrorCube.h"
 #include "Orange.h"
 #include "Pawn.h"
 #include "Table.h"
@@ -59,16 +60,18 @@ void Map::createEntity(char c, float x, float z) {
 		createButter(x, z, true); break;
 	case 'C':
 		createCandle(x, z); break;
+	case 'M':
+		createMirrorCube(x, z); break;
 	case 'o':
 		createCheerio(x, z); break;
 	case 'O':
 		Orange::addSpawnPoint(x, z); break;
 	case 'P':
 		createPawn(x, z); break;
-	case 'T':
-		createTree(x, z); break;
 	case 'S':
 		spawnCar(x, z); break;
+	case 'T':
+		createTree(x, z); break;
 	default:
 		break;
 	}
@@ -89,11 +92,16 @@ void Map::createCandle(float x, float z) {
 
 void Map::createCar(VSShaderLib* shader) {
 	lives = new Lives(-0.6f, 0.8f, 0.08f, NUM_LIVES);
-	gameObjects.push_back(car = new Car(shader, 3.2f, 1.0f, lives));
+	//gameObjects.push_back(car = new Car(shader, 3.2f, 1.0f, lives));
+	car = new Car(shader, 3.2f, 1.0f, lives);
 }
 
 void Map::createCheerio(float x, float z) {
 	gameObjects.push_back(new Cheerio(x, 0.1f, z, 0.4f, car));
+}
+
+void Map::createMirrorCube(float x, float z) {
+	gameObjects.push_back(new MirrorCube(x, z));
 }
 
 void Map::createPawn(float x, float z) {

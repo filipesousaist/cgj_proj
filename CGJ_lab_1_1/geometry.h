@@ -36,7 +36,7 @@ struct MyMesh {
 	struct Material mat;
 };
 
-std::vector<struct MyMesh> createMeshFromAssimp(const std::string& filepath);
+//std::vector<struct MyMesh> createMeshFromAssimp(const std::string& filepath);
 MyMesh createCube();
 MyMesh createQuad(float size_x, float size_y);
 MyMesh createSphere(float radius, int divisions);

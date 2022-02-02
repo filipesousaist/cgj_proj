@@ -20,6 +20,7 @@ private:
 	void createCandle(float x, float z);
 	void createCar(VSShaderLib* shader);
 	void createCheerio(float x, float z);
+	void createMirrorCube(float x, float z);
 	void createPawn(float x, float z);
 	void createTree(float x, float z);
 
