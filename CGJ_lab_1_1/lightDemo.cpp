@@ -833,10 +833,12 @@ void aiRecursive_render(const aiScene* sc, const aiNode* nd)
 		glUniform1i(loc, 1);
 		glUniform1i(reflect_perFragment_uniformId, 0);
 
-		// Bind texture
-		glActiveTexture(GL_TEXTURE0);
-		glBindTexture(GL_TEXTURE_2D, assimpTextures[car->carMeshes[nd->mMeshes[n]].texUnits[0]]);
-		glUniform1i(tex_loc[0], 0);
+		if (car->carMeshes[nd->mMeshes[n]].mat.texCount > 0) {
+			// Bind texture
+			glActiveTexture(GL_TEXTURE0);
+			glBindTexture(GL_TEXTURE_2D, assimpTextures[car->carMeshes[nd->mMeshes[n]].texUnits[0]]);
+			glUniform1i(tex_loc[0], 0);
+		}
 
 		unsigned int  diffMapCount = 0;  //read 2 diffuse textures
 
