@@ -150,24 +150,17 @@ float camWorld[4];
 // Mouse Tracking Variables
 int startX, startY, tracking = 0;
 
+float ALPHA_START = 270.0f, BETA_START = 20.0f, R_START = 15.0f;
 // Camera Spherical Coordinates
-float alpha = 39.0f, beta = 51.0f;
-float r = 10.0f;
+float alpha = ALPHA_START,
+      beta = BETA_START,
+	  r = R_START;
 
 // Frame counting and FPS computation
 long myTime, timebase = 0, frame = 0;
 char s[32];
 
 float directionalLightPos[4] { 1.0f, 1000.0f, 1.0f, 0.0f };
-
-/*float pointLightPos[NUM_POINT_LIGHTS][4]{
-	{-35.0f, 4.0f, -35.0f, 1.0f},
-	{-35.0f, 4.0f, 35.0f, 1.0f},
-	{35.0f, 4.0f, -35.0f, 1.0f},
-	{35.0f, 4.0f, 35.0f, 1.0f},
-	{0.0f, 4.0f, -15.0f, 1.0f},
-	{0.0f, 4.0f, 15.0f, 1.0f}
-};*/
 
 float pointLightPos[NUM_POINT_LIGHTS][4];
 
@@ -224,11 +217,11 @@ void timer(int value)
     glutTimerFunc(1000, timer, 0);
 }
 
-void initFireworks()
+void initFireworks(float x, float z)
 {
 	for (int i = 0; i < MAX_PARTICLES; i++) {
-		fireworks.push_back(new Firework(0, 7.5f, 0,
-			0.8f * frand() + 0.2f, frand() * PI, 2.0f * frand() * PI));
+		fireworks.push_back(new Firework(x, 7.5f, z,
+			0.32f * frand() + 0.08f, frand() * PI, 2.0f * frand() * PI));
 	}
 }
 
@@ -236,6 +229,12 @@ void refresh(int value)
 {
 	glutTimerFunc(1000 / 60, refresh, 0);
 	glutPostRedisplay();
+}
+
+void updateCameraSphericalCoordinates(float alpha, float beta, float r) {
+	camX = r * sin(alpha * DEG_TO_RAD) * cos(beta * DEG_TO_RAD);
+	camZ = r * cos(alpha * DEG_TO_RAD) * cos(beta * DEG_TO_RAD);
+	camY = r * sin(beta * DEG_TO_RAD);
 }
 
 void setCameraProjection() {
@@ -246,8 +245,10 @@ void setCameraProjection() {
 	case Camera::ORTHOGONAL:
 		ortho(-50 * camRatio, 50 * camRatio, -50, 50, 1, 1500);
 		break;
-	case Camera::PERSPECTIVE:
 	case Camera::CAR:
+		alpha = ALPHA_START, beta = BETA_START, r = R_START;
+		updateCameraSphericalCoordinates(alpha, beta, r);
+	case Camera::PERSPECTIVE:
 		perspective(53.13f, camRatio, 0.1f, 1000.0f);
 		break;
 	default:
@@ -289,7 +290,6 @@ void updateCarCamera() {
 	float x = car->getX();
 	float y = car->getY();
 	float z = car->getZ();
-
 	
 	float camLocal[4]{ camX, camY, camZ, 1 };
 
@@ -553,7 +553,7 @@ void renderHUDShapes() {
 	glDisable(GL_DEPTH_TEST);
 	glDisable(GL_CULL_FACE);
 
-	if (gameOver) {
+	if (gameOver || gameMap->hasWon()) {
 		renderObject(gameOverQuad);
 		renderObject(restartQuad);
 	}
@@ -594,14 +594,26 @@ void renderText() {
 
 	ortho(m_viewport[0], m_viewport[0] + m_viewport[2] - 1, m_viewport[1], m_viewport[1] + m_viewport[3] - 1, -1, 1);
 	Car* car = gameMap->getCar();
+	/*
 	RenderText(shaderText, "X " + std::to_string(car->getX()) + " m", 25.0f, 125.0f, 0.5f, 0.5f, 0.5f, 0.8f);
 	RenderText(shaderText, "Z " + std::to_string(car->getZ()) + " m", 25.0f, 100.0f, 0.5f, 0.5f, 0.5f, 0.8f);
 	RenderText(shaderText, "Angle " + std::to_string(car->getAngle()) + " deg", 25.0f, 75.0f, 0.5f, 0.5f, 0.8f, 0.2f);
 	RenderText(shaderText, "Speed " + std::to_string(car->getSpeed()), 25.0f, 50.0f, 0.5f, 0.5f, 0.2f, 0.8f);
 	RenderText(shaderText, "Angular speed " + std::to_string(car->getAngularSpeed()), 25.0f, 25.0f, 0.5f, 0.5f, 0.8f, 0.2f);
+	*/
+	RenderText(shaderText, "Score: " + to_string(gameMap->getScore()),
+		25.0f, 125.0f, 1.0f, 0.2f, 0.4f, 0.8f);
+	RenderText(shaderText, "Lap " + to_string(gameMap->getLap()) + "/" + to_string(gameMap->getNumLaps()),
+		25.0f, 75.0f, 1.0f, 0.2f, 0.4f, 0.8f);
+	RenderText(shaderText, "Checkpoints: " + to_string(gameMap->getNumReachedCheckpoints()) + "/" + to_string(gameMap->getNumCheckpoints()),
+		25.0f, 25.0f, 1.0f, 0.2f, 0.4f, 0.8f);
 
-	if (gameOver) {
-		renderTextString("GAME OVER", 0.5f, 0.65f, 0.003f, 1.0f, 0.3f, 0.2f);
+	if (gameOver || gameMap->hasWon()) {
+		string text = gameOver ? "GAME OVER" : "YOU WON";
+		float color1[] = { 1.0f, 0.3f, 0.2f };
+		float color2[] = { 0.3f, 1.0f, 0.2f };
+		float* color = gameOver ? color1 : color2;
+		renderTextString(text, 0.5f, 0.65f, 0.003f, color[0], color[1], color[2]);
 		renderTextString("Press R to restart.", 0.5f, 0.35f, 0.0015f, 1.0f, 1.0f, 1.0f);
 	}
 	else if (paused) {
@@ -639,7 +651,6 @@ void renderFirework(Firework* particle, int deltaTime) {
 		if (particle->isAlive()) {
 			particle->setDiffuse(0.882, 0.552, 0.211);
 
-
 			loc = glGetUniformLocation(shader.getProgramIndex(), "mat.diffuse");
 			glUniform4fv(loc, 1, particle->getDiffuse());
 
@@ -651,9 +662,6 @@ void renderFirework(Firework* particle, int deltaTime) {
 				l3dBillboardSphericalBegin(camWorld, worldPos);
 			else if (cameraProjection == Camera::CAR)
 				l3dBillboardCylindricalBegin(camWorld, worldPos);
-
-			pushMatrix(MODEL);
-			translate(MODEL, particle->getX(), particle->getY(), particle->getZ());
 
 			// send matrices to OGL
 			computeDerivedMatrix(PROJ_VIEW_MODEL);
@@ -667,7 +675,6 @@ void renderFirework(Firework* particle, int deltaTime) {
 			glDrawElements(part.mesh.type, part.mesh.numIndexes, GL_UNSIGNED_INT, 0);
 			glBindVertexArray(0);
 
-			popMatrix(MODEL);
 			popMatrix(MODEL);
 		}
 		else num_dead_particles++;
@@ -1104,7 +1111,8 @@ void resetUniforms() {
 void renderScene(void) {
 
 	int currentTime = glutGet(GLUT_ELAPSED_TIME);
-	int deltaTime = (gameOver || paused) ? 0 : currentTime - lastTime;
+	int deltaTime = (gameOver || paused || gameMap->hasWon()) ? 0 : currentTime - lastTime;
+	int fireworksDeltaTime = (gameOver || paused) ? 0 : currentTime - lastTime;
 
 	FrameCount++;
 
@@ -1147,7 +1155,7 @@ void renderScene(void) {
 
 	if (firework) {
 		for (Firework* particle : fireworks)
-			renderFirework(particle, deltaTime);
+			renderFirework(particle, fireworksDeltaTime);
 
 		if (num_dead_particles == MAX_PARTICLES) {
 			firework = false;
@@ -1155,6 +1163,10 @@ void renderScene(void) {
 			fireworks.clear();
 			printf("All particles dead\n");
 		}
+	}
+	else if (gameMap->hasWon()) {
+		initFireworks(gameMap->getCar()->getX(), gameMap->getCar()->getZ());
+		firework = true;
 	}
 
 	if (flare && candles) {
@@ -1214,8 +1226,7 @@ void renderScene(void) {
 void restartGame() {
 	paused = false;
 	gameOver = false;
-	gameMap->getLives()->reset();
-	gameMap->getCar()->reset();
+	gameMap->reset();
 }
 
 // ------------------------------------------------------------
@@ -1296,7 +1307,7 @@ void processKeys(unsigned char key, int xx, int yy)
 				fireworks.clear();
 			}
 			else {
-				initFireworks();
+				initFireworks(gameMap->getCar()->getX(), gameMap->getCar()->getZ());
 				fireworkKey = true;
 				firework = true;
 			}
@@ -1437,9 +1448,7 @@ void processMouseMotion(int xx, int yy)
 		}
 
 		if (tracking == 1 || tracking == 2) {
-			camX = rAux * sin(alphaAux * DEG_TO_RAD) * cos(betaAux * DEG_TO_RAD);
-			camZ = rAux * cos(alphaAux * DEG_TO_RAD) * cos(betaAux * DEG_TO_RAD);
-			camY = rAux * sin(betaAux * DEG_TO_RAD);
+			updateCameraSphericalCoordinates(alphaAux, betaAux, rAux);
 		}
 	}
 

@@ -19,21 +19,15 @@ using namespace std;
 using namespace Utils;
 using namespace MathUtils;
 
-const float ACC = 1e-5f;
-const float ANG_SPEED = 1.2e-2f;
-const float MAX_SPEED = 2.5e-3f;
-
 char model_dir[50];  //initialized by the user input at the console
 extern const aiScene* scene;
-
-
 
 float SPOT_LIGHT_POS[NUM_SPOT_LIGHTS][4]{
 	{1.0f, 0.5f, -0.25f, 1.0f},
 	{1.0f, 0.5f, 0.25f, 1.0f}
 };
 
-Car::Car(VSShaderLib* shader, float sizeX, float sizeZ, Lives* lives) {
+Car::Car(VSShaderLib* shader, float sizeX, float sizeZ, Map* map, Lives* lives) {
 	angle = 0;
 	rollAngle = -90;
 
@@ -45,6 +39,7 @@ Car::Car(VSShaderLib* shader, float sizeX, float sizeZ, Lives* lives) {
 	colliderSize = (sizeX + sizeZ) / 2;
 
 	this->shader = shader;
+	this->map = map;
 	this->lives = lives;
 
 	char* filename = "cars";
@@ -98,12 +93,10 @@ void Car::addSpotLights() {
 }
 
 void Car::move(int deltaTime) {
-	
 	movePosition(deltaTime);
 	moveAngle(deltaTime);
 
 	moveSpotLights();
-
 }
 
 void Car::moveAngle(int deltaTime) {
@@ -136,9 +129,10 @@ void Car::movePosition(int deltaTime) {
 	float accDrag = speed * 3e-4f;
 	speed += (ACC * accMult - accDrag) * deltaTime;
 
-	if (abs(x) > 50.0f || abs(z) > 50.0f) {
+	if (abs(x) > map->getWidth() * 0.5f || abs(z) > map->getHeight() * 0.5f) {
 		reset();
 		loseLife();
+		map->resetOranges();
 	}
 }
 
@@ -210,22 +204,23 @@ void Car::stop() {
 }
 
 void Car::reset() {
-	angle = 0;
+	x = spawnX;
+	z = spawnZ;
+
+	angle = spawnAngle;
 	rollAngle = -90;
 
 	speed = 0;
 	angSpeed = 0;
 
 	accTang = accNorm = 0;
-
-	x = spawnX;
-	z = spawnZ;
 }
 
-void Car::setSpawnPoint(float x, float z)
+void Car::setSpawnPoint(float x, float z, float angle)
 {
 	spawnX = x;
 	spawnZ = z;
+	spawnAngle = angle;
 }
 
 void Car::loseLife() {

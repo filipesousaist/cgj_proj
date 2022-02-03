@@ -17,8 +17,6 @@ public:
 	float getRadius() {
 		return radius;
 	};
-
-
 };
 
 

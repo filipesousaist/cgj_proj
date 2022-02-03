@@ -3,7 +3,7 @@
 #include <vector>
 
 #include "Object.h"
-#include "Car.h"
+#include "Map.h"
 
 class Orange : public Object
 {
@@ -12,7 +12,7 @@ private:
 
 	float speed;
 
-	Car* car;
+	Map* map;
 
 	void spawnRandomly(float initialSpeed);
 
@@ -23,9 +23,11 @@ private:
 	void addParts();
 
 public:
-	Orange::Orange(Car* car);
+	Orange::Orange(Map* map);
 
 	static void addSpawnPoint(float x, float z);
+
+	void reset();
 	
 	void handleCollision();
 };
