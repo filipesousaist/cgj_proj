@@ -1120,6 +1120,10 @@ void renderRearView(int deltaTime) {
 
 	glStencilFunc(GL_EQUAL, 0x1, 0x1);
 	glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
+
+	glClearDepth(1);
+	glClear(GL_DEPTH_BUFFER_BIT);
+
 	glEnable(GL_DEPTH_TEST);
 	for (Object* obj : gameObjects)
 		renderObject(obj);
