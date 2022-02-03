@@ -195,6 +195,9 @@ bool fireworkKey = false;
 bool rearView = false;
 bool rearViewKey = false;
 
+bool planar = false;
+bool planarKey = false;
+
 inline double clamp(const double x, const double min, const double max) {
 	return (x < min ? min : (x > max ? max : x));
 }
@@ -904,7 +907,7 @@ void renderMirror(int deltaTime) {
 	GLint shadowMode_uniformId = glGetUniformLocation(shader.getProgramIndex(), "shadowMode");
 
 
-	if (camY > 0) { //camera in front of the floor so render reflections and shadows. Inner product between the viewing direction and the normal of the ground
+	if (camY > 0 && planar) { //camera in front of the floor so render reflections and shadows. Inner product between the viewing direction and the normal of the ground
 		glEnable(GL_STENCIL_TEST);
 		glClear(GL_STENCIL_BUFFER_BIT);     // Escrever 1 no stencil buffer onde se for desenhar a reflexão e a sombra
 		glStencilFunc(GL_NEVER, 0x1, 0x1);
@@ -1077,7 +1080,7 @@ void renderRearView(int deltaTime) {
 	float dirZ = sin(car->getAngle() * DEG_TO_RAD);
 
 	float backCamX = x - dirX;
-	float backCamY = 5;
+	float backCamY = 2;
 	float backCamZ = z - dirZ;
 	
 	GLint loc;
@@ -1091,9 +1094,9 @@ void renderRearView(int deltaTime) {
 
 	loadIdentity(VIEW);
 	loadIdentity(PROJECTION);
-	perspective(53.13f, camRatio, 1, 10000);
+	perspective(53.13f, camRatio, 0.1f, 10000);
 	lookAt(backCamX, backCamY, backCamZ,
-		backCamX - dirX, backCamY * 0.9f, backCamZ + dirZ,
+		backCamX - dirX, 1.6, backCamZ + dirZ,
 		0, 1, 0);
 
 	glStencilFunc(GL_EQUAL, 0x1, 0x1);
@@ -1375,7 +1378,11 @@ void processKeys(unsigned char key, int xx, int yy)
 		if (!rearViewKey) {
 			rearViewKey = true;
 			rearView = !rearView;
-			// Create stencil
+		}
+	case 'x': //planar reflections and shadows
+		if (!planarKey) {
+			planarKey = true;
+			planar = !planar;
 		}
 	}
 }
@@ -1411,6 +1418,8 @@ void processKeysUp(unsigned char key, int xx, int yy)
 		fireworkKey = false; break;
 	case 'z':
 		rearViewKey = false; break;
+	case 'x':
+		planarKey = false; break;
 	} 
 }
 
