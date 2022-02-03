@@ -1,7 +1,6 @@
 #pragma once
 #include "ScreenQuad.h"
 
-
 class Lives : public ScreenQuad
 {
 private:

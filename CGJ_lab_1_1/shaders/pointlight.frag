@@ -115,7 +115,7 @@ void main() {
 	// Point lights
 	if (candles) {
 		for (int i = 0; i < NUM_POINT_LIGHTS; i ++) {
-			float POINT_INTENSITY = 10;
+			float POINT_INTENSITY = 5;
 			float POINT_LINEAR_ATT = 0;
 			float POINT_QUADRATIC_ATT = 0.01;
 
@@ -153,13 +153,14 @@ void main() {
 		}
 	}
 	
+	float totalSpotIntensity = 0;
 	// Spotlights
 	if (headlights) {
 		float SPOT_INTENSITY = 10;
 		float SPOT_LINEAR_ATT = 0;
 		float SPOT_QUADRATIC_ATT = 0.01;
 
-		float SPOT_COS_CUTOFF = cos(radians(30));
+		float SPOT_COS_CUTOFF = cos(radians(20));
 
 		for (int i = 0; i < NUM_SPOT_LIGHTS; i++) {
 			vec3 posToSpotLight = spotLightPos[i] - DataIn.pos;
@@ -197,6 +198,7 @@ void main() {
 
 				if (diffuse > 0.0) {
 					totalDiffuse += diffuse;
+					totalSpotIntensity += diffuse;
 					vec3 h = normalize(sl + eyeDir);
 					float intSpecular = max(dot(h,new_n), 0.0);
 					totalSpecular += pow(intSpecular, mat.shininess) * spot_intensity;
@@ -252,7 +254,7 @@ void main() {
 
 	if (fog) {
 		float dist = length(DataIn.pos);
-		float fogAmount = exp(-dist * dist * 0.005);
+		float fogAmount = exp(-dist * dist * 0.005 / (1 + 5 * totalSpotIntensity));
 		vec3 fogColor = vec3(0.5, 0.6, 0.7);
 		vec3 final_color = mix(fogColor, colorOut.rgb, fogAmount);
 		colorOut = vec4(final_color, colorOut.a);

@@ -3,6 +3,6 @@
 class Table : public Object
 {
 public:
-	Table::Table();
+	Table::Table(int width, int height);
 };
 

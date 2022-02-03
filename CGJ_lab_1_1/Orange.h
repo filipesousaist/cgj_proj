@@ -1,12 +1,15 @@
 #pragma once
-#include "Object.h"
-
 #include <string>
+#include <vector>
+
+#include "Object.h"
 #include "Car.h"
 
 class Orange : public Object
 {
 private:
+	static vector<float*> spawnPoints;
+
 	float speed;
 
 	Car* car;
@@ -21,6 +24,8 @@ private:
 
 public:
 	Orange::Orange(Car* car);
+
+	static void addSpawnPoint(float x, float z);
 	
 	void handleCollision();
 };
