@@ -5,8 +5,8 @@ using namespace Utils;
 
 Firework::Firework(float x, float y, float z, GLfloat v, GLfloat phi, GLfloat theta) {
 
-	this->life = 1.0f;
-	this->fade = 0.0025f;
+	this->life = 0.75f;
+	this->fade = 0.005f;
 
 	this->x = x;
 	this->y = y;
@@ -16,8 +16,8 @@ Firework::Firework(float x, float y, float z, GLfloat v, GLfloat phi, GLfloat th
 	this->vy = v * cos(phi);
 	this->vz = v * sin(theta) * sin(phi);
 
-	this->ax = 0.1f;	//simular um pouco de vento
-	this->ay = -0.15f;	//simular a aceleração da gravidade
+	this->ax = 0.01f;	//simular um pouco de vento
+	this->ay = -0.02f;	//simular a aceleração da gravidade
 	this->az = 0.0f;
 
 	float amb[] = { 1.0f, 1.0f, 1.0f, 1.0f };

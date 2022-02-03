@@ -37,6 +37,12 @@
     <Filter Include="Source Files\Utils">
       <UniqueIdentifier>{6ce82744-096c-4d0f-931a-94a854c71509}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Source Files\Objects\Coin">
+      <UniqueIdentifier>{451f1c68-9af0-47d4-a51f-ff786a8e04f9}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\Objects\Coin">
+      <UniqueIdentifier>{7edc0b80-63ce-47a1-ba0c-ea4bffbc4f32}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="lightDemo.cpp">
@@ -113,6 +119,24 @@
     </ClCompile>
     <ClCompile Include="Map.cpp">
       <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Checkpoint.cpp">
+      <Filter>Source Files\Objects</Filter>
+    </ClCompile>
+    <ClCompile Include="Goal.cpp">
+      <Filter>Source Files\Objects</Filter>
+    </ClCompile>
+    <ClCompile Include="Coin.cpp">
+      <Filter>Source Files\Objects\Coin</Filter>
+    </ClCompile>
+    <ClCompile Include="GoldCoin.cpp">
+      <Filter>Source Files\Objects\Coin</Filter>
+    </ClCompile>
+    <ClCompile Include="SilverCoin.cpp">
+      <Filter>Source Files\Objects\Coin</Filter>
+    </ClCompile>
+    <ClCompile Include="CopperCoin.cpp">
+      <Filter>Source Files\Objects\Coin</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -205,6 +229,21 @@
     </ClInclude>
     <ClInclude Include="Map.h">
       <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Checkpoint.h">
+      <Filter>Header Files\Objects</Filter>
+    </ClInclude>
+    <ClInclude Include="Coin.h">
+      <Filter>Header Files\Objects\Coin</Filter>
+    </ClInclude>
+    <ClInclude Include="GoldCoin.h">
+      <Filter>Header Files\Objects\Coin</Filter>
+    </ClInclude>
+    <ClInclude Include="CopperCoin.h">
+      <Filter>Header Files\Objects\Coin</Filter>
+    </ClInclude>
+    <ClInclude Include="SilverCoin.h">
+      <Filter>Header Files\Objects\Coin</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

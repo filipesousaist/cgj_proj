@@ -164,8 +164,13 @@
     <ClCompile Include="Butter.cpp" />
     <ClCompile Include="Candle.cpp" />
     <ClCompile Include="Car.cpp" />
+    <ClCompile Include="Checkpoint.cpp" />
     <ClCompile Include="Cheerio.cpp" />
+    <ClCompile Include="Coin.cpp" />
+    <ClCompile Include="CopperCoin.cpp" />
     <ClCompile Include="Firework.cpp" />
+    <ClCompile Include="Goal.cpp" />
+    <ClCompile Include="GoldCoin.cpp" />
     <ClCompile Include="l3dBillboard.cpp" />
     <ClCompile Include="lightDemo.cpp" />
     <ClCompile Include="Lives.cpp" />
@@ -177,6 +182,7 @@
     <ClCompile Include="Orange.cpp" />
     <ClCompile Include="Pawn.cpp" />
     <ClCompile Include="ScreenQuad.cpp" />
+    <ClCompile Include="SilverCoin.cpp" />
     <ClCompile Include="Skybox.cpp" />
     <ClCompile Include="Table.cpp" />
     <ClCompile Include="Texture_Loader.cpp" />
@@ -190,13 +196,17 @@
     <ClInclude Include="Butter.h" />
     <ClInclude Include="Candle.h" />
     <ClInclude Include="Car.h" />
+    <ClInclude Include="Checkpoint.h" />
     <ClInclude Include="Cheerio.h" />
+    <ClInclude Include="Coin.h" />
+    <ClInclude Include="CopperCoin.h" />
     <ClInclude Include="cube.h" />
     <ClInclude Include="Firework.h" />
     <ClInclude Include="flare.h" />
     <ClInclude Include="ft2build.h" />
     <ClInclude Include="geometry.h" />
     <ClInclude Include="constants.h" />
+    <ClInclude Include="GoldCoin.h" />
     <ClInclude Include="l3DBillboard.h" />
     <ClInclude Include="Lives.h" />
     <ClInclude Include="Map.h" />
@@ -207,6 +217,7 @@
     <ClInclude Include="Orange.h" />
     <ClInclude Include="Pawn.h" />
     <ClInclude Include="ScreenQuad.h" />
+    <ClInclude Include="SilverCoin.h" />
     <ClInclude Include="Skybox.h" />
     <ClInclude Include="src\resource.h" />
     <ClInclude Include="src\Texture_Loader.h" />
