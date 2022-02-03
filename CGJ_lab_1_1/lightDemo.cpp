@@ -1388,6 +1388,7 @@ void processKeys(unsigned char key, int xx, int yy)
 		if (!planarKey) {
 			planarKey = true;
 			planar = !planar;
+			table->setTranslucent(planar);
 		}
 		break;
 
