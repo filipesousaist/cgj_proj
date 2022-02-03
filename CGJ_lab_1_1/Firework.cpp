@@ -4,6 +4,8 @@
 using namespace Utils;
 
 Firework::Firework(float x, float y, float z, GLfloat v, GLfloat phi, GLfloat theta) {
+	static MyMesh amesh;
+	static bool isMeshCreated = false;
 
 	this->life = 0.75f;
 	this->fade = 0.005f;
@@ -20,19 +22,19 @@ Firework::Firework(float x, float y, float z, GLfloat v, GLfloat phi, GLfloat th
 	this->ay = -0.02f;	//simular a aceleração da gravidade
 	this->az = 0.0f;
 
-	float amb[] = { 1.0f, 1.0f, 1.0f, 1.0f };
 	this->diff[0] = 0.88f;
 	this->diff[1] = 0.55f;
 	this->diff[2] = 0.2f;
 	this->diff[3] = 1.0f;
-	float spec[] = { 0.0f, 0.0f, 0.0f, 1.0f };
-	float emissive[] = { 0.0f, 0.0f, 0.0f, 1.0f };
-	float shininess = 100.0f;
-	int texIndices[] = { PARTICLE_TEX};
-	bool mergeTextureWithColor = false;
 
-	MyMesh amesh = createQuad(0.5f, 0.5f);
-	setMeshProperties(&amesh, amesh.mat.ambient, amesh.mat.diffuse, amesh.mat.specular, amesh.mat.emissive, amesh.mat.shininess, texIndices, mergeTextureWithColor);
+	if (!isMeshCreated) {
+		int texIndices[] = { PARTICLE_TEX };
+		bool mergeTextureWithColor = false;
+
+		amesh = createQuad(0.5f, 0.5f);
+		setMeshProperties(&amesh, amesh.mat.ambient, amesh.mat.diffuse, amesh.mat.specular, amesh.mat.emissive, amesh.mat.shininess, texIndices, mergeTextureWithColor);
+		isMeshCreated = true;
+	}
 
 	this->addPart(amesh);
 }
