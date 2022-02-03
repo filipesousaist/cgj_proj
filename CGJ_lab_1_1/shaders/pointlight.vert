@@ -5,6 +5,8 @@ uniform mat4 m_viewModel;
 uniform mat4 m_Model;   //por causa do cubo para a skybox
 uniform mat3 m_normal;
 
+uniform bool reflect;
+
 in vec4 position;
 in vec4 normal;    //por causa do gerador de geometria
 in vec4 texCoord;
@@ -30,4 +32,6 @@ void main () {
 
 	fragTan = tangent;
 	gl_Position = m_pvm * position;
+	if (reflect) 
+		gl_Position = vec4(-gl_Position.x, gl_Position.y, -gl_Position.z, gl_Position.w);
 }

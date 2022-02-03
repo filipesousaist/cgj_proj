@@ -104,6 +104,7 @@ ScreenQuad* restartQuad;
 MyMesh flareQuad;
 
 ScreenQuad* rearViewMirror;
+ScreenQuad* rearViewMirrorQuad;
 
 Skybox* skybox;
 
@@ -270,6 +271,7 @@ void changeSize(int w, int h) {
 	gameOverQuad->resize(w, h);
 	restartQuad->resize(w, h);
 	rearViewMirror->resize(w, h);
+	rearViewMirrorQuad->resize(w, h);
 	
 	gameMap->getLives()->resize(w, h);
 
@@ -923,14 +925,14 @@ void renderMirror(int deltaTime) {
 		// Render the reflected geometry
 
 		directionalLightPos[1] *= -1.0f;  //mirror the position of light
-		multMatrixPoint(VIEW, directionalLightPos, res);
+		multMatrixPoint(MODEL, directionalLightPos, res);
 		GLint lPos_uniformId = glGetUniformLocation(shader.getProgramIndex(), "directionalLightPos");
 		glUniform3fv(lPos_uniformId, 1, res);
 
 		for (int i = 0; i < NUM_POINT_LIGHTS; i++) {
 			float res[4];
 			pointLightPos[i][1] *= -1.0f;  //mirror the position of light
-			multMatrixPoint(VIEW, pointLightPos[i], res);
+			multMatrixPoint(MODEL, pointLightPos[i], res);
 			stringstream ss;
 			ss.str("");
 			ss << "pointLightPos[" << i << "]";
@@ -963,14 +965,14 @@ void renderMirror(int deltaTime) {
 		popMatrix(MODEL);
 
 		directionalLightPos[1] *= -1.0f;  //reset the light position
-		multMatrixPoint(VIEW, directionalLightPos, res);
+		multMatrixPoint(MODEL, directionalLightPos, res);
 		lPos_uniformId = glGetUniformLocation(shader.getProgramIndex(), "directionalLightPos");
 		glUniform3fv(lPos_uniformId, 1, res);
 
 		for (int i = 0; i < NUM_POINT_LIGHTS; i++) {
 			float res[4];
 			pointLightPos[i][1] *= -1.0f;
-			multMatrixPoint(VIEW, pointLightPos[i], res);   //reset the light position
+			multMatrixPoint(MODEL, pointLightPos[i], res);   //reset the light position
 			stringstream ss;
 			ss.str("");
 			ss << "pointLightPos[" << i << "]";
@@ -986,7 +988,7 @@ void renderMirror(int deltaTime) {
 		// Render the Shadows
 		if (day) {
 			glUniform1i(shadowMode_uniformId, 1);  //Render with darker color
-			shadow_matrix(mat, plano_chao, res);
+			shadow_matrix(mat, plano_chao, directionalLightPos);
 
 			glDisable(GL_DEPTH_TEST);  //To force the shadow geometry to be rendered even if behind the floor
 
@@ -1027,6 +1029,24 @@ void renderMirror(int deltaTime) {
 }
 
 void renderRearView(int deltaTime) {
+	pushMatrix(MODEL);
+	pushMatrix(VIEW);
+	pushMatrix(PROJECTION);
+
+	loadIdentity(MODEL);
+	loadIdentity(VIEW);
+	loadIdentity(PROJECTION);
+
+	ortho(-1, 1, -1, 1, -1, 1);
+
+	glDisable(GL_DEPTH_TEST);
+	glDisable(GL_CULL_FACE);
+
+	renderObject(rearViewMirrorQuad);
+
+	popMatrix(MODEL);
+	popMatrix(VIEW);
+	popMatrix(PROJECTION);
 	glEnable(GL_STENCIL_TEST);
 	pushMatrix(MODEL);
 	pushMatrix(VIEW);
@@ -1066,6 +1086,8 @@ void renderRearView(int deltaTime) {
 
 	loc = glGetUniformLocation(shader.getProgramIndex(), "headlights");
 	glUniform1i(loc, false);
+	loc = glGetUniformLocation(shader.getProgramIndex(), "reflect");
+	glUniform1i(loc, true);
 	//loc = glGetUniformLocation(shader.getProgramIndex(), "candles");
 	//glUniform1i(loc, false);
 
@@ -1097,6 +1119,9 @@ void renderRearView(int deltaTime) {
 			printf("All particles dead\n");
 		}
 	}
+
+	loc = glGetUniformLocation(shader.getProgramIndex(), "reflect");
+	glUniform1i(loc, false);
 }
 
 void resetUniforms() {
@@ -1141,9 +1166,9 @@ void renderScene(void) {
 	for (Object* obj : gameObjects)
 		obj->update(deltaTime);
 	
-	renderMirror(deltaTime);
 	renderSkybox();
 
+	renderMirror(deltaTime);
 
 	for (Object* obj : gameObjects)
 		renderObject(obj);
@@ -1196,6 +1221,8 @@ void renderScene(void) {
 		popMatrix(PROJECTION);
 		popMatrix(VIEW);
 	}
+
+
 
 	if (rearView && cameraProjection == Camera::CAR) {
 		renderRearView(deltaTime);
@@ -1571,6 +1598,7 @@ void createScene() {
 	restartQuad = new ScreenQuad(0, -0.3f, 0.1f, 0.15f);
 	
 	rearViewMirror = new ScreenQuad(0, 0.7f, 0.15f, 0.4f);
+	rearViewMirrorQuad = new ScreenQuad(0, 0.7, 0.16f, 0.4f, 0.0f, 0.0f, 0.0f, 1.0f);
 
 	// create geometry and VAO of the quad for flare elements
 	flareQuad = createQuad(1, 1);
