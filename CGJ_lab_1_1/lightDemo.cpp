@@ -687,10 +687,86 @@ void renderFirework(Firework* particle, int deltaTime) {
 	glDepthMask(GL_TRUE); //make depth buffer again writeable
 }
 
-void renderSkybox() {
+void draw_mirror() {
+	vector<Object::Part>* parts = table->getParts();
+
+	GLint loc;
+	for (const Object::Part& part : *parts) {
+		// textures
+		for (int t = 0; t < part.mesh.mat.texCount; t++) {
+			glUniform1i(texMode_uniformId, 0);
+			glActiveTexture(GL_TEXTURES[t]);
+			glBindTexture(GL_TEXTURE_2D, TextureArray[part.mesh.mat.texIndices[t]]);
+			glUniform1i(tex_loc[t], t);
+		}
+
+		loc = glGetUniformLocation(shader.getProgramIndex(), "mergeTextureWithColor");
+		glUniform1i(loc, part.mesh.mat.mergeTextureWithColor);
+		loc = glGetUniformLocation(shader.getProgramIndex(), "isHUD");
+		glUniform1i(loc, part.mesh.mat.isHUD);
+
+		// send the material
+		loc = glGetUniformLocation(shader.getProgramIndex(), "mat.ambient");
+		glUniform4fv(loc, 1, part.mesh.mat.ambient);
+		loc = glGetUniformLocation(shader.getProgramIndex(), "mat.diffuse");
+		glUniform4fv(loc, 1, part.mesh.mat.diffuse);
+		loc = glGetUniformLocation(shader.getProgramIndex(), "mat.specular");
+		glUniform4fv(loc, 1, part.mesh.mat.specular);
+		loc = glGetUniformLocation(shader.getProgramIndex(), "mat.shininess");
+		glUniform1f(loc, part.mesh.mat.shininess);
+		loc = glGetUniformLocation(shader.getProgramIndex(), "mat.texCount");
+		glUniform1i(loc, part.mesh.mat.texCount);
+		pushMatrix(MODEL);
+
+		translate(MODEL, table->getX(), table->getY(), table->getZ());
+		rotate(MODEL, table->getAngle(), 0, 1, 0);
+		rotate(MODEL, table->getRollAngle(), 0, 0, -1);
+		scale(MODEL, table->getScaleX(), table->getScaleY(), table->getScaleZ());
+		translate(MODEL, part.position[0], part.position[1], part.position[2]);
+		rotate(MODEL, part.angle, part.rotationAxis[0], part.rotationAxis[1], part.rotationAxis[2]);
+		scale(MODEL, part.scale[0], part.scale[1], part.scale[2]);
+
+		// send matrices to OGL
+		computeDerivedMatrix(PROJ_VIEW_MODEL);
+		glUniformMatrix4fv(vm_uniformId, 1, GL_FALSE, mCompMatrix[VIEW_MODEL]);
+		glUniformMatrix4fv(pvm_uniformId, 1, GL_FALSE, mCompMatrix[PROJ_VIEW_MODEL]);
+		computeNormalMatrix3x3();
+		glUniformMatrix3fv(normal_uniformId, 1, GL_FALSE, mNormal3x3);
+
+		// Render mesh
+		glBindVertexArray(part.mesh.vao);
+
+		if (!shader.isProgramValid()) {
+			cout << shader.getProgramInfoLog();
+			std::printf("Program Not Valid!\n");
+			exit(1);
+		}
+		glDrawElements(part.mesh.type, part.mesh.numIndexes, GL_UNSIGNED_INT, 0);
+		glBindVertexArray(0);
+
+		popMatrix(MODEL);
+	}
+}
+
+void renderSkybox(bool rear) {
 	glActiveTexture(GL_TEXTURE2);
 	glBindTexture(GL_TEXTURE_CUBE_MAP, TextureArray[SKY_TEX]);
 	glUniform1i(tex_skyBoxMap_loc, 2);
+	
+	if (camY > -0.1f && planar && !rear) {
+		glEnable(GL_STENCIL_TEST);
+		glClear(GL_STENCIL_BUFFER_BIT);     // Escrever 1 no stencil buffer onde se for desenhar a reflexão e a sombra
+		glStencilFunc(GL_NEVER, 0x1, 0x1);
+		glStencilOp(GL_REPLACE, GL_REPLACE, GL_REPLACE);
+
+		// Fill stencil buffer with Ground shape; never rendered into color buffer
+		draw_mirror();
+
+		// Desenhar apenas onde o stencil buffer não esta a 1
+		glStencilFunc(GL_NOTEQUAL, 0x1, 0x1);
+		glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
+	}
+	
 
 	glUniform1i(texMode_uniformId, 3);
 
@@ -839,66 +915,7 @@ void renderCar() {
 	popMatrix(MODEL);
 }
 
-void draw_mirror() {
-	vector<Object::Part>* parts = table->getParts();
 
-	GLint loc;
-	for (const Object::Part& part : *parts) {
-		// textures
-		for (int t = 0; t < part.mesh.mat.texCount; t++) {
-			glUniform1i(texMode_uniformId, 0);
-			glActiveTexture(GL_TEXTURES[t]);
-			glBindTexture(GL_TEXTURE_2D, TextureArray[part.mesh.mat.texIndices[t]]);
-			glUniform1i(tex_loc[t], t);
-		}
-
-		loc = glGetUniformLocation(shader.getProgramIndex(), "mergeTextureWithColor");
-		glUniform1i(loc, part.mesh.mat.mergeTextureWithColor);
-		loc = glGetUniformLocation(shader.getProgramIndex(), "isHUD");
-		glUniform1i(loc, part.mesh.mat.isHUD);
-
-		// send the material
-		loc = glGetUniformLocation(shader.getProgramIndex(), "mat.ambient");
-		glUniform4fv(loc, 1, part.mesh.mat.ambient);
-		loc = glGetUniformLocation(shader.getProgramIndex(), "mat.diffuse");
-		glUniform4fv(loc, 1, part.mesh.mat.diffuse);
-		loc = glGetUniformLocation(shader.getProgramIndex(), "mat.specular");
-		glUniform4fv(loc, 1, part.mesh.mat.specular);
-		loc = glGetUniformLocation(shader.getProgramIndex(), "mat.shininess");
-		glUniform1f(loc, part.mesh.mat.shininess);
-		loc = glGetUniformLocation(shader.getProgramIndex(), "mat.texCount");
-		glUniform1i(loc, part.mesh.mat.texCount);
-		pushMatrix(MODEL);
-
-		translate(MODEL, table->getX(), table->getY(), table->getZ());
-		rotate(MODEL, table->getAngle(), 0, 1, 0);
-		rotate(MODEL, table->getRollAngle(), 0, 0, -1);
-		scale(MODEL, table->getScaleX(), table->getScaleY(), table->getScaleZ());
-		translate(MODEL, part.position[0], part.position[1], part.position[2]);
-		rotate(MODEL, part.angle, part.rotationAxis[0], part.rotationAxis[1], part.rotationAxis[2]);
-		scale(MODEL, part.scale[0], part.scale[1], part.scale[2]);
-
-		// send matrices to OGL
-		computeDerivedMatrix(PROJ_VIEW_MODEL);
-		glUniformMatrix4fv(vm_uniformId, 1, GL_FALSE, mCompMatrix[VIEW_MODEL]);
-		glUniformMatrix4fv(pvm_uniformId, 1, GL_FALSE, mCompMatrix[PROJ_VIEW_MODEL]);
-		computeNormalMatrix3x3();
-		glUniformMatrix3fv(normal_uniformId, 1, GL_FALSE, mNormal3x3);
-
-		// Render mesh
-		glBindVertexArray(part.mesh.vao);
-
-		if (!shader.isProgramValid()) {
-			cout << shader.getProgramInfoLog();
-			std::printf("Program Not Valid!\n");
-			exit(1);
-		}
-		glDrawElements(part.mesh.type, part.mesh.numIndexes, GL_UNSIGNED_INT, 0);
-		glBindVertexArray(0);
-
-		popMatrix(MODEL);
-	}
-}
 
 void renderMirror(int deltaTime) {
 	float res[4];
@@ -909,7 +926,7 @@ void renderMirror(int deltaTime) {
 	GLint shadowMode_uniformId = glGetUniformLocation(shader.getProgramIndex(), "shadowMode");
 
 
-	if (camY > 0 && planar) { //camera in front of the floor so render reflections and shadows. Inner product between the viewing direction and the normal of the ground
+	if (camY > -0.1f && planar) { //camera in front of the floor so render reflections and shadows. Inner product between the viewing direction and the normal of the ground
 		glEnable(GL_STENCIL_TEST);
 		glClear(GL_STENCIL_BUFFER_BIT);     // Escrever 1 no stencil buffer onde se for desenhar a reflexão e a sombra
 		glStencilFunc(GL_NEVER, 0x1, 0x1);
@@ -1108,7 +1125,7 @@ void renderRearView(int deltaTime) {
 		renderObject(obj);
 	renderCar();
 	draw_mirror();
-	renderSkybox();
+	renderSkybox(true);
 
 
 	if (firework) {
@@ -1173,7 +1190,7 @@ void renderScene(void) {
 	for (Object* obj : gameObjects)
 		obj->update(deltaTime);
 	
-	renderSkybox();
+	renderSkybox(false);
 
 	renderMirror(deltaTime);
 
