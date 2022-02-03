@@ -1079,8 +1079,8 @@ void renderRearView(int deltaTime) {
 	float dirX = cos(car->getAngle() * DEG_TO_RAD);
 	float dirZ = sin(car->getAngle() * DEG_TO_RAD);
 
-	float backCamX = x - dirX;
-	float backCamY = 2;
+	float backCamX = x + dirX;
+	float backCamY = 1.0;
 	float backCamZ = z - dirZ;
 	
 	GLint loc;
@@ -1096,7 +1096,7 @@ void renderRearView(int deltaTime) {
 	loadIdentity(PROJECTION);
 	perspective(53.13f, camRatio, 0.1f, 10000);
 	lookAt(backCamX, backCamY, backCamZ,
-		backCamX - dirX, 1.6, backCamZ + dirZ,
+		backCamX - dirX, 0.65, backCamZ + dirZ,
 		0, 1, 0);
 
 	glStencilFunc(GL_EQUAL, 0x1, 0x1);
@@ -1104,7 +1104,7 @@ void renderRearView(int deltaTime) {
 
 	for (Object* obj : gameObjects)
 		renderObject(obj);
-
+	renderCar();
 	draw_mirror();
 	renderSkybox();
 
@@ -1379,11 +1379,14 @@ void processKeys(unsigned char key, int xx, int yy)
 			rearViewKey = true;
 			rearView = !rearView;
 		}
+		break;
 	case 'x': //planar reflections and shadows
 		if (!planarKey) {
 			planarKey = true;
 			planar = !planar;
 		}
+		break;
+
 	}
 }
 
