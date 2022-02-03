@@ -33,5 +33,5 @@ void main () {
 	fragTan = tangent;
 	gl_Position = m_pvm * position;
 	if (reflect) 
-		gl_Position = vec4(-gl_Position.x, gl_Position.y, -gl_Position.z, gl_Position.w);
+		gl_Position = vec4(-gl_Position.x, gl_Position.y, gl_Position.z, gl_Position.w);
 }

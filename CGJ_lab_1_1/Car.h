@@ -47,7 +47,6 @@ private:
 
 	void movePosition(int deltaTime);
 	void moveAngle(int deltaTime);
-	void moveSpotLights();
 
 	void move(int deltaTime);
 
@@ -67,6 +66,7 @@ public:
 	void stop();
 	void reset();
 	void setSpawnPoint(float x, float z, float angle);
+	void moveSpotLights();
 
 	void loseLife();
 

@@ -96,7 +96,7 @@ void Car::move(int deltaTime) {
 	movePosition(deltaTime);
 	moveAngle(deltaTime);
 
-	moveSpotLights();
+	//moveSpotLights();
 }
 
 void Car::moveAngle(int deltaTime) {

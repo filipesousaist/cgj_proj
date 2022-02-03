@@ -359,6 +359,8 @@ void renderLights() {
 		GLint plPos_uniformId = glGetUniformLocation(shader.getProgramIndex(), ss.str().c_str());
 		glUniform3fv(plPos_uniformId, 1, res);
 	}
+
+	gameMap->getCar()->moveSpotLights();
 }
 
 void renderObject(Object* obj) {
@@ -1101,7 +1103,7 @@ void renderRearView(int deltaTime) {
 
 	glStencilFunc(GL_EQUAL, 0x1, 0x1);
 	glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
-
+	glEnable(GL_DEPTH_TEST);
 	for (Object* obj : gameObjects)
 		renderObject(obj);
 	renderCar();
@@ -1121,6 +1123,8 @@ void renderRearView(int deltaTime) {
 		}
 	}
 
+	loc = glGetUniformLocation(shader.getProgramIndex(), "headlights");
+	glUniform1i(loc, true);
 	loc = glGetUniformLocation(shader.getProgramIndex(), "reflect");
 	glUniform1i(loc, false);
 }
@@ -1160,11 +1164,11 @@ void renderScene(void) {
 	glEnable(GL_BLEND);
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
-	renderLights();
-
 	gameMap->getCar()->update(deltaTime);
 
 	setCameraLookAt();
+
+	renderLights();
 
 	for (Object* obj : gameObjects)
 		obj->update(deltaTime);
