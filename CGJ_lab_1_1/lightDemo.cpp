@@ -247,8 +247,6 @@ void setCameraProjection() {
 		ortho(-50 * camRatio, 50 * camRatio, -50, 50, 1, 1500);
 		break;
 	case Camera::CAR:
-		alpha = ALPHA_START, beta = BETA_START, r = R_START;
-		updateCameraSphericalCoordinates(alpha, beta, r);
 	case Camera::PERSPECTIVE:
 		perspective(53.13f, camRatio, 0.1f, 1000.0f);
 		break;
@@ -290,7 +288,7 @@ void changeSize(int w, int h) {
 void updateCarCamera() {
 	Car* car = gameMap->getCar();
 	float x = car->getX();
-	float y = car->getY();
+	float y = 1;//car->getY();
 	float z = car->getZ();
 	
 	float camLocal[4]{ camX, camY, camZ, 1 };
@@ -1147,7 +1145,7 @@ void renderScene(void) {
 	loadIdentity(VIEW);
 	loadIdentity(MODEL);
 	
-	setCameraLookAt();
+	//setCameraLookAt();
 	
 	// use our shader
 	glUseProgram(shader.getProgramIndex());
@@ -1162,6 +1160,8 @@ void renderScene(void) {
 	renderLights();
 
 	gameMap->getCar()->update(deltaTime);
+
+	setCameraLookAt();
 
 	for (Object* obj : gameObjects)
 		obj->update(deltaTime);
@@ -1279,8 +1279,17 @@ void processKeys(unsigned char key, int xx, int yy)
 	case '2':
 		cameraProjection = Camera::PERSPECTIVE; setCameraProjection(); break;
 	case '3':
-		cameraProjection = Camera::CAR; setCameraProjection(); break;
-
+		cameraProjection = Camera::CAR; 
+		alpha = ALPHA_START, beta = BETA_START, r = R_START;
+		updateCameraSphericalCoordinates(alpha, beta, r);
+		setCameraProjection(); 
+		break;
+	case '4':
+		cameraProjection = Camera::CAR;
+		alpha = ALPHA_START, beta = 0.0f, r = 0.5f;
+		updateCameraSphericalCoordinates(alpha, beta, r);
+		setCameraProjection();
+		break;
 	case 'w':
 		gameMap->getCar()->accelerate(true); break;
 	case 's':
@@ -1669,8 +1678,8 @@ int main(int argc, char **argv) {
 	glutReshapeFunc(changeSize);
 
 	glutTimerFunc(0, timer, 0);   // Use it to count number of frames rendered per second
-	//glutIdleFunc(renderScene);  // Use it for maximum performance
-	glutTimerFunc(0, refresh, 0);    //use it to to get 60 FPS whatever
+	glutIdleFunc(renderScene);  // Use it for maximum performance
+	//glutTimerFunc(0, refresh, 0);    //use it to to get 60 FPS whatever
 
 //	Mouse and Keyboard Callbacks
 	glutKeyboardFunc(processKeys);
