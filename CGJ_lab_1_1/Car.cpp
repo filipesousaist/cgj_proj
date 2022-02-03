@@ -42,7 +42,7 @@ Car::Car(VSShaderLib* shader, float sizeX, float sizeZ, Map* map, Lives* lives) 
 	this->map = map;
 	this->lives = lives;
 
-	char* filename = "free_car_001";
+	char* filename = "cars";
 
 	std::string filepath;
 
