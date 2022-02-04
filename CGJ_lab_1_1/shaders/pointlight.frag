@@ -242,8 +242,10 @@ void main() {
 	{
 		texel = texture(texmap, DataIn.texCoord);  //texel from element flare texture
 		if((texel.a == 0.0)  || (mat.diffuse.a == 0.0) ) discard;
-		else
+		else{
 			colorOut = mat.diffuse * texel;
+			return;
+		}
 	}
 	else // multitexturing
 	{
