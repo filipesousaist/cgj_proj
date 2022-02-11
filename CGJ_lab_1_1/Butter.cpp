@@ -13,11 +13,11 @@ Butter::Butter(float x, float y, float z, float sizeX, float sizeZ, Car* car) {
 	
 	MyMesh amesh;
 
-	float amb[] = { 0.6f, 0.48f, 0.0f, 1.0f };
+	float amb[] = { 0.1f, 0.1f, 0.0f, 1.0f };
 	float diff[] = { 0.8f, 0.8f, 0.2f, 1.0f };
 	float spec[] = { 0.2f, 0.2f, 0.2f, 1.0f };
 	float emissive[] = { 0.0f, 0.0f, 0.0f, 1.0f };
-	float shininess = 100.0f;
+	float shininess = 0.0f;
 	int* texIndices = NULL;
 	bool mergeTextureWithColor = false;
 
