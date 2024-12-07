@@ -24,7 +24,6 @@ uniform sampler2D normalMap;
 uniform samplerCube skyBoxMap;
 in vec3 skyboxTexCoord;
 
-
 struct Materials {
 	vec4 diffuse;
 	vec4 ambient;
@@ -72,11 +71,12 @@ void main() {
 	vec3 e = normalize(DataIn.eye);
 	eyeDir = e;
 	new_n = n;
+
 	// Directional light
-	if (day){
+	if (day) {
 		vec3 dl = normalize(directionalLightPos - DataIn.pos);
 
-		if(texMode == 2)  {
+		if (texMode == 2)  {
 			//Calculate components of TBN basis in eye space
 			t = normalize(m_normal * fragTan.xyz);  
 			b = fragTan.w * cross(n,t);

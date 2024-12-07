@@ -418,7 +418,6 @@ void renderObject(Object* obj) {
 				l3dBillboardSphericalBegin(camWorld, worldPos);
 			else if (cameraProjection == Camera::CAR)
 				l3dBillboardCylindricalBegin(camWorld, worldPos);
-
 		}
 
 		// send the material
@@ -456,6 +455,7 @@ void renderObject(Object* obj) {
 		glBindVertexArray(part.mesh.vao);
 
 		if (!shader.isProgramValid()) {
+			cout << shader.getProgramInfoLog();
 			std::printf("Program Not Valid!\n");
 			exit(1);
 		}
@@ -488,9 +488,9 @@ void render_flare(FLARE_DEF* flare, int lx, int ly, int* m_viewport) {
 	int screenMaxCoordX = m_viewport[0] + m_viewport[2] - 1;
 	int screenMaxCoordY = m_viewport[1] + m_viewport[3] - 1;
 
-	//viewport center
-	cx = m_viewport[0] + (int)(0.5f * (float)m_viewport[2]) - 1;
-	cy = m_viewport[1] + (int)(0.5f * (float)m_viewport[3]) - 1;
+	// viewport center
+	cx = m_viewport[0] + (int) (0.5f * (float) m_viewport[2]) - 1;
+	cy = m_viewport[1] + (int) (0.5f * (float) m_viewport[3]) - 1;
 
 	// Compute how far off-center the flare source is.
 	maxflaredist = sqrt(cx * cx + cy * cy);
@@ -640,9 +640,9 @@ void renderText() {
 }
 
 void renderSkybox() {
-	glActiveTexture(GL_TEXTURE0);
+	glActiveTexture(GL_TEXTURE2);
 	glBindTexture(GL_TEXTURE_CUBE_MAP, TextureArray[SKY_TEX]);
-	glUniform1i(tex_skyBoxMap_loc, 0);
+	glUniform1i(tex_skyBoxMap_loc, 2);
 
 	glUniform1i(texMode_uniformId, 3);
 
@@ -666,6 +666,9 @@ void renderSkybox() {
 	glUniformMatrix4fv(model_uniformId, 1, GL_FALSE, mMatrix[MODEL]); //Transformação de modelação do cubo unitário para o "Big Cube"
 	computeDerivedMatrix(PROJ_VIEW_MODEL);
 	glUniformMatrix4fv(pvm_uniformId, 1, GL_FALSE, mCompMatrix[PROJ_VIEW_MODEL]);
+	GLint loc;
+	loc = glGetUniformLocation(shader.getProgramIndex(), "mat.texCount");
+	glUniform1i(loc, 0);
 
 	vector<Object::Part>* parts = skybox->getParts();
 
@@ -673,9 +676,10 @@ void renderSkybox() {
 		glBindVertexArray(part.mesh.vao);
 		glDrawElements(part.mesh.type, part.mesh.numIndexes, GL_UNSIGNED_INT, 0);
 		glBindVertexArray(0);
-		popMatrix(MODEL);
-		popMatrix(VIEW);
 	}
+
+	popMatrix(MODEL);
+	popMatrix(VIEW);
 	glFrontFace(GL_CCW); // restore counter clockwise vertex order to mean the front
 	glDepthMask(GL_TRUE);
 	glBindTexture(GL_TEXTURE_CUBE_MAP, 0);
@@ -760,10 +764,12 @@ void renderScene(void) {
 
 	if (lives->areEmpty())
 		gameOver = true;
-	
-	glutSwapBuffers();
 
 	lastTime = currentTime;
+
+	glBindTexture(GL_TEXTURE_2D, 0);
+	glDisable(GL_BLEND);
+	glutSwapBuffers();
 }
 
 void restartGame() {

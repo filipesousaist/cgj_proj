@@ -19,8 +19,9 @@ ORANGE_TEX = 3,
 ORANGE_Norm = 4,
 TREE_TEX = 5,
 PARTICLE_TEX = 6,
-SKY_TEX = 7,
-LIFE_TEX = 8;
+LIFE_TEX = 7,
+SKY_TEX = 8;
+
 const int GL_TEXTURES[] = { GL_TEXTURE0, GL_TEXTURE1 };
 
 const int NUM_POINT_LIGHTS = 6;

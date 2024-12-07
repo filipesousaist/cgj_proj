@@ -38,7 +38,6 @@ public:
 	float getRollAngle() {
 		return rollAngle;
 	}
-	//void getRollAxis(float* rollAxis); // By reference
 
 	float getScaleX() {
 		return scaleX;
