@@ -12,24 +12,35 @@ using namespace std;
 using namespace Utils;
 using namespace MathUtils;
 
-const int RADIUS = 2;
+const int ORANGE_RADIUS = 2;
 const float INITIAL_SPEED = 0.005f;
-const float SPEED_INCREASE = 0.004f;
-const float MAX_SPEED = 0.002f; //0.025f;
+const float SPEED_INCREASE = 0.005f;
+const float ORANGE_MAX_SPEED = 0.003f; //0.025f;
 
-Orange::Orange(Car* car) {
+vector<float*> Orange::spawnPoints;
+
+Orange::Orange(Map* map) {
 	spawnRandomly(INITIAL_SPEED);
 	addParts();
-	this->car = car;
+	this->map = map;
+}
+
+void Orange::addSpawnPoint(float x, float z) {
+	spawnPoints.push_back(new float[] {x, z});
 }
 
 void Orange::spawnRandomly(float newSpeed) {
-	x = randFloat(-40, 40);
-	y = RADIUS;
-	z = randFloat(-40, 40);
+	float* spawnPoint = Orange::spawnPoints.at(randInt(0, spawnPoints.size() - 1));
+	x = spawnPoint[0];
+	y = ORANGE_RADIUS;
+	z = spawnPoint[1];
 	speed = newSpeed;
 	angle = modAngle(randFloat(0, 360));
 	rollAngle = 0;
+}
+
+void Orange::reset() {
+	spawnRandomly(INITIAL_SPEED);
 }
 
 float Orange::movePosition(int deltaTime) {
@@ -39,14 +50,14 @@ float Orange::movePosition(int deltaTime) {
 	z -= sin(angleRad) * deltaPos;
 
 	if (abs(x) >= 50 || abs(z) >= 50) {
-		spawnRandomly(fminf(speed + SPEED_INCREASE, MAX_SPEED));
+		spawnRandomly(fminf(speed + SPEED_INCREASE, ORANGE_MAX_SPEED));
 	}
 
 	return deltaPos;
 }
 
 void Orange::roll(int deltaTime, float deltaPos) {
-	rollAngle = modAngle(rollAngle + RAD_TO_DEG * deltaPos / RADIUS);
+	rollAngle = modAngle(rollAngle + RAD_TO_DEG * deltaPos / ORANGE_RADIUS);
 }
 
 void Orange::move(int deltaTime) {
@@ -81,18 +92,13 @@ void Orange::addParts() {
 }
 
 void Orange::handleCollision() {
-	bool collision = false;
-
-	float angleRad = car->getAngle() * DEG_TO_RAD;
-
-	float collisionMinDistance = car->getColliderSize() / 2 + RADIUS;
+	Car* car = map->getCar();
+	float collisionMinDistance = car->getColliderSize() / 2 + ORANGE_RADIUS;
 
 	if (abs(car->getX() - getX()) <= collisionMinDistance &&
-		abs(car->getZ() - getZ()) <= collisionMinDistance)
-		collision = true;
-
-	if (collision) {
+		abs(car->getZ() - getZ()) <= collisionMinDistance) {
 		car->reset();
 		car->loseLife();
+		map->resetOranges();
 	}
 }

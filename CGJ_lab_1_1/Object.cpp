@@ -40,6 +40,10 @@ void Object::addPart(MyMesh mesh) {
 	addPart(mesh, 0, 0, 0, 1, 1, 1, 0, 1, 0, 0);
 }
 
+void Object::removeLastPart() {
+	parts->pop_back();
+}
+
 void Object::update(int deltaTime)
 {
 	move(deltaTime);
@@ -48,11 +52,4 @@ void Object::update(int deltaTime)
 vector<Object::Part>* Object::getParts() {
 	return parts;
 }
-
-/*void Object::getRollAxis(float* rollAxis) {
-	float direction[] { x, 0, z };
-	normalize(direction);
-	float up[] { 0, 1, 0 };
-	crossProduct(direction, up, rollAxis);
-}*/
 

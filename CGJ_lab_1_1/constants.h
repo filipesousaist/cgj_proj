@@ -1,6 +1,7 @@
 #pragma once
 
 #include <math.h>
+#include <GL/glew.h>
 
 const float PI = 4 * atan(1);
 const float DEG_TO_RAD = PI / 180;
@@ -16,11 +17,12 @@ STONE_TEX = 0,
 WOOD_TEX = 1,
 CHECKERS_TEX = 2,
 ORANGE_TEX = 3,
-ORANGE_Norm = 4,
+ORANGE_NORM = 4,
 TREE_TEX = 5,
 PARTICLE_TEX = 6,
 LIFE_TEX = 7,
-SKY_TEX = 8;
+SKY_TEX = 8,
+SUGAR_TEX = 9;
 
 const int GL_TEXTURES[] = { GL_TEXTURE0, GL_TEXTURE1 };
 

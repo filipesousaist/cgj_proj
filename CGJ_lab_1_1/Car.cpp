@@ -9,25 +9,27 @@
 #include "constants.h"
 #include "Utils.h"
 #include "MathUtils.h"
+#include <meshFromAssimp.h>
+
+// assimp include files. These three are usually needed.
+#include "assimp/Importer.hpp"	//OO version Header!
+#include "assimp/scene.h"
 
 using namespace std;
 using namespace Utils;
 using namespace MathUtils;
 
-const float ACC = 1e-5f;
-const float ANG_SPEED = 2e-2f;
-const float MAX_SPEED = 3e-3f;
+char model_dir[50];  //initialized by the user input at the console
+extern const aiScene* scene;
 
-float SPOT_LIGHT_POS[NUM_SPOT_LIGHTS][4] {
+float SPOT_LIGHT_POS[NUM_SPOT_LIGHTS][4]{
 	{1.0f, 0.5f, -0.25f, 1.0f},
 	{1.0f, 0.5f, 0.25f, 1.0f}
 };
 
-Car::Car(VSShaderLib* shader, float sizeX, float sizeZ, Lives* lives) {
+Car::Car(VSShaderLib* shader, float sizeX, float sizeZ, Map* map, Lives* lives) {
 	angle = 0;
-	rollAngle = 0;
 
-	speed = 0;
 	angSpeed = 0;
 
 	accTang = accNorm = 0;
@@ -35,69 +37,34 @@ Car::Car(VSShaderLib* shader, float sizeX, float sizeZ, Lives* lives) {
 	colliderSize = (sizeX + sizeZ) / 2;
 
 	this->shader = shader;
-
+	this->map = map;
 	this->lives = lives;
 
-	addParts(sizeX, sizeZ);
-}
+	char* filename = "cars";
 
-void Car::addParts(float sizeX, float sizeZ) {
-	addBody(sizeX, sizeZ);
-	addWheels();
+	std::string filepath;
+
+	std::ostringstream oss;
+	oss << "img/" << filename << "/" << filename << ".obj";
+	filepath = oss.str();   //path of OBJ file in the VS project
+
+	if (!Import3DFromFile(filepath))
+		exit(1);
+
+	strcat(model_dir, "img/");
+	strcat(model_dir, filename);
+	strcat(model_dir, "/");
+
+	carMeshes = createMeshFromAssimp(scene);
+
+	for (MyMesh amesh : carMeshes) {
+		addPart(amesh, 0, 0.5f, 0,
+			0.02f, 0.02f, 0.02f,
+			90, 0, 1, 0);
+	}
 	addSpotLights();
 }
 
-void Car::addBody(float sizeX, float sizeZ) {
-	float amb[] = { 0.0f, 0.6f, 0.0f, 1.0f };
-	float diff[] = { 0.2f, 0.8f, 0.2f, 1.0f };
-	float spec[] = { 0.5f, 0.5f, 0.5f, 1.0f };
-	float emissive[] = { 0.0f, 0.0f, 0.0f, 1.0f };
-	float shininess = 80.0f;
-	int* texIndices = NULL;
-	bool mergeTextureWithColor = false;
-
-	MyMesh amesh = createCube();
-	setMeshProperties(&amesh, amb, diff, spec, emissive, shininess, texIndices, mergeTextureWithColor);
-
-	addPart(amesh,
-		-1.0f, 0.25f, -0.5f,
-		sizeX, 0.5f, sizeZ);
-
-	// Cockpit
-	addPart(amesh,
-		-0.5f,  0.65f, -0.3f,
-		0.4f * sizeX, 0.4f, 0.6f * sizeZ);
-}
-
-void Car::addWheels() {
-	float amb[] = { 0.15f, 0.15f, 0.15f, 1.0f };
-	float diff[] = { 0.2f, 0.2f, 0.2f, 1.0f };
-	float spec[] = { 0.2f, 0.2f, 0.2f, 1.0f };
-	float emissive[] = { 0.0f, 0.0f, 0.0f, 1.0f };
-	float shininess = 80.0f;
-	int* texIndices = NULL;
-	bool mergeTextureWithColor = false;
-
-	MyMesh amesh = createTorus(0.05f, 0.25f, 20, 12);
-	setMeshProperties(&amesh, amb, diff, spec, emissive, shininess, texIndices, mergeTextureWithColor);
-
-	float signs[]{ -1, 1 };
-
-	for (int xi = 0; xi < 2; xi ++) {
-		float xSign = signs[xi];
-		for (int zi = 0; zi < 2; zi ++) {
-			float zSign = signs[zi];
-
-			addPart(
-				amesh,
-				0.5f * xSign, 0.25f, 0.5f * zSign,
-				1.0f, 1.0f, 1.0f,
-				90,
-				1.0f, 0, 0
-			);
-		}
-	}
-}
 
 void Car::addSpotLights() {
 	MyMesh amesh;
@@ -124,11 +91,10 @@ void Car::addSpotLights() {
 }
 
 void Car::move(int deltaTime) {
-	
 	movePosition(deltaTime);
 	moveAngle(deltaTime);
 
-	moveSpotLights();
+	//moveSpotLights();
 }
 
 void Car::moveAngle(int deltaTime) {
@@ -161,16 +127,16 @@ void Car::movePosition(int deltaTime) {
 	float accDrag = speed * 3e-4f;
 	speed += (ACC * accMult - accDrag) * deltaTime;
 
-	if (abs(x) > 50.0f || abs(z) > 50.0f) {
+	if (abs(x) > map->getWidth() * 0.5f || abs(z) > map->getHeight() * 0.5f) {
 		reset();
 		loseLife();
+		map->resetOranges();
 	}
 }
 
 void uniformSpotLightPos(VSShaderLib* shader, string name, int index, float pos_model[4]) {
 	float pos_viewModel[4];
 	multMatrixPoint(VIEW, pos_model, pos_viewModel);
-	
 	stringstream ss;
 	ss.str("");
 	ss << name << "[" << index << "]";
@@ -187,7 +153,6 @@ void Car::moveSpotLights() {
 		translate(MODEL, getX(), getY(), getZ());
 		rotate(MODEL, getAngle(), 0, 1, 0);
 		translate(MODEL, SPOT_LIGHT_POS[i][0], SPOT_LIGHT_POS[i][1], SPOT_LIGHT_POS[i][2]);
-		
 		// Spotlight position
 		float pos[4];
 		multMatrixPoint(MODEL, new float[4]{ 0.0f, 0.0f, 0.0f, 1.0f }, pos);
@@ -200,6 +165,14 @@ void Car::moveSpotLights() {
 
 		popMatrix(MODEL);
 	}
+}
+
+void Car::turnLeft(bool active) {
+	turningLeft = active;
+}
+
+void Car::turnRight(bool active) {
+	turningRight = active;
 }
 
 void Car::accelerate(bool active) {
@@ -227,16 +200,23 @@ void Car::stop() {
 }
 
 void Car::reset() {
-	angle = 0;
-	rollAngle = 0;
+	x = spawnX;
+	z = spawnZ;
+
+	angle = spawnAngle;
+	rollAngle = -90;
 
 	speed = 0;
 	angSpeed = 0;
 
 	accTang = accNorm = 0;
+}
 
-	x = 0;
-	z = 0;
+void Car::setSpawnPoint(float x, float z, float angle)
+{
+	spawnX = x;
+	spawnZ = z;
+	spawnAngle = angle;
 }
 
 void Car::loseLife() {
@@ -244,10 +224,4 @@ void Car::loseLife() {
 	reset();
 }
 
-void Car::turnLeft(bool active) {
-	turningLeft = active;
-}
 
-void Car::turnRight(bool active) {
-	turningRight = active;
-}

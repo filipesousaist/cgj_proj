@@ -27,11 +27,11 @@
 // Use Very Simple Libs
 #include "VSShaderlib.h"
 #include "AVTmathLib.h"
-#include "VertexAttrDef.h"
 #include "geometry.h"
 #include "Texture_Loader.h"
 #include "avtFreeType.h"
 
+#include "Map.h"
 #include "Object.h"
 #include "Butter.h"
 #include "Candle.h"
@@ -44,12 +44,18 @@
 #include "Table.h"
 #include "Tree.h"
 #include "Firework.h"
+#include "MirrorCube.h"
 #include "constants.h"
 #include "l3DBillboard.h"
 #include "Utils.h"
 #include "MathUtils.h"
 #include <flare.h>
 #include <Skybox.h>
+
+// assimp include files. These three are usually needed.
+#include "assimp/Importer.hpp"	//OO version Header!
+#include "assimp/scene.h"
+#include "assimp/postprocess.h"
 
 #define frand()		((float)rand()/RAND_MAX)
 
@@ -65,6 +71,14 @@ unsigned int FrameCount = 0;
 
 unsigned int lastTime = 0; // Time of last frame in milliseconds
 
+// Created an instance of the Importer class in the meshFromAssimp.cpp file
+extern Assimp::Importer importer;
+// the global Assimp scene object
+extern const aiScene* scene;
+
+// scale factor for the Assimp model to fit in the window
+extern float scaleFactor;
+
 //shaders
 VSShaderLib shader;  //geometry
 VSShaderLib shaderText;  //render bitmap text
@@ -72,24 +86,26 @@ VSShaderLib shaderText;  //render bitmap text
 //File with the font
 constexpr char FONT_NAME[] = "fonts/arial.ttf";
 
+Map* gameMap;
+
 vector<Object*> gameObjects;
 vector<Firework*> fireworks;
 int num_dead_particles = 0;
 
-Car* car;
+Table* table;
 
 Camera cameraProjection;
 
 float camRatio;
 
 ScreenQuad* pauseQuad;
-MyMesh flareQuad;
-
 ScreenQuad* gameOverQuad;
 ScreenQuad* restartQuad;
 
-const int NUM_LIVES = 5;
-Lives* lives;
+MyMesh flareQuad;
+
+ScreenQuad* rearViewMirror;
+ScreenQuad* rearViewMirrorQuad;
 
 Skybox* skybox;
 
@@ -110,12 +126,20 @@ GLint tex_loc[2];
 GLint texMode_uniformId;
 GLint tex_normalMap_loc;
 GLint tex_skyBoxMap_loc;
+GLint view_uniformId;
+GLint reflect_perFragment_uniformId;
+GLint diffMapCount_loc;
 
-const int NUM_TEXTURES = 9;
+const int NUM_TEXTURES = 10;
 GLuint TextureArray[NUM_TEXTURES];
 
 const int NUM_FLARE_TEXTURES = 5;
 GLuint FlareTextureArray[NUM_FLARE_TEXTURES];
+
+extern GLuint* assimpTextures;
+
+int windowWidth = 0;
+int windowHeight = 0;
 
 //Flare effect
 FLARE_DEF AVTflare;
@@ -131,9 +155,11 @@ float camWorld[4];
 // Mouse Tracking Variables
 int startX, startY, tracking = 0;
 
+float ALPHA_START = 270.0f, BETA_START = 20.0f, R_START = 15.0f;
 // Camera Spherical Coordinates
-float alpha = 39.0f, beta = 51.0f;
-float r = 10.0f;
+float alpha = ALPHA_START,
+      beta = BETA_START,
+	  r = R_START;
 
 // Frame counting and FPS computation
 long myTime, timebase = 0, frame = 0;
@@ -141,14 +167,7 @@ char s[32];
 
 float directionalLightPos[4] { 1.0f, 1000.0f, 1.0f, 0.0f };
 
-float pointLightPos[NUM_POINT_LIGHTS][4] {
-	{-35.0f, 4.0f, -35.0f, 1.0f},
-	{-35.0f, 4.0f, 35.0f, 1.0f},
-	{35.0f, 4.0f, -35.0f, 1.0f},
-	{35.0f, 4.0f, 35.0f, 1.0f},
-	{0.0f, 4.0f, -15.0f, 1.0f},
-	{0.0f, 4.0f, 15.0f, 1.0f}
-};
+float pointLightPos[NUM_POINT_LIGHTS][4];
 
 bool day = true;
 bool dayKey = false;
@@ -177,6 +196,12 @@ bool bumpmapKey = false;
 bool firework = false;
 bool fireworkKey = false;
 
+bool rearView = false;
+bool rearViewKey = false;
+
+bool planar = false;
+bool planarKey = false;
+
 inline double clamp(const double x, const double min, const double max) {
 	return (x < min ? min : (x > max ? max : x));
 }
@@ -199,72 +224,12 @@ void timer(int value)
     FrameCount = 0;
     glutTimerFunc(1000, timer, 0);
 }
-void initFireworks()
+
+void initFireworks(float x, float z)
 {
 	for (int i = 0; i < MAX_PARTICLES; i++) {
-		fireworks.push_back(new Firework(0, 7.5f, 0,
-			0.8f * frand() + 0.2f, frand() * PI, 2.0f * frand() * PI));
-	}
-}
-
-void renderFirework(Firework* particle) {
-	glEnable(GL_BLEND);
-	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-	vector<Object::Part>* parts = particle->getParts();
-	particle->updateParticle(0.033f);
-
-	for (const Object::Part& part : *parts) {
-		GLint loc;
-
-		glActiveTexture(GL_TEXTURES[0]);
-		glBindTexture(GL_TEXTURE_2D, TextureArray[PARTICLE_TEX]);
-		glUniform1i(tex_loc[0], 0);
-
-		loc = glGetUniformLocation(shader.getProgramIndex(), "mergeTextureWithColor");
-		glUniform1i(loc, part.mesh.mat.mergeTextureWithColor);
-
-		loc = glGetUniformLocation(shader.getProgramIndex(), "mat.texCount");
-		glUniform1i(loc, -1);
-
-		glDepthMask(GL_FALSE);  //Depth Buffer Read Only
-
-		if (particle->isAlive()) {
-			particle->setDiffuse(0.882, 0.552, 0.211);
-
-
-			loc = glGetUniformLocation(shader.getProgramIndex(), "mat.diffuse");
-			glUniform4fv(loc, 1, particle->getDiffuse());
-
-			float worldPos[3]{ particle->getX(), particle->getY(), particle->getZ() };
-
-			pushMatrix(MODEL);
-			translate(MODEL, particle->getX(), particle->getY(), particle->getZ());
-			if (cameraProjection == Camera::PERSPECTIVE)
-				l3dBillboardSphericalBegin(camWorld, worldPos);
-			else if (cameraProjection == Camera::CAR)
-				l3dBillboardCylindricalBegin(camWorld, worldPos);
-
-			pushMatrix(MODEL);
-			translate(MODEL, particle->getX(), particle->getY(), particle->getZ());
-
-			// send matrices to OGL
-			computeDerivedMatrix(PROJ_VIEW_MODEL);
-			glUniformMatrix4fv(vm_uniformId, 1, GL_FALSE, mCompMatrix[VIEW_MODEL]);
-			glUniformMatrix4fv(pvm_uniformId, 1, GL_FALSE, mCompMatrix[PROJ_VIEW_MODEL]);
-			computeNormalMatrix3x3();
-			glUniformMatrix3fv(normal_uniformId, 1, GL_FALSE, mNormal3x3);
-
-			// Render mesh
-			glBindVertexArray(part.mesh.vao);
-			glDrawElements(part.mesh.type, part.mesh.numIndexes, GL_UNSIGNED_INT, 0);
-			glBindVertexArray(0);
-
-			popMatrix(MODEL);
-			popMatrix(MODEL);
-
-
-		}
-		else num_dead_particles++;
+		fireworks.push_back(new Firework(x, 7.5f, z,
+			0.32f * frand() + 0.08f, frand() * PI, 2.0f * frand() * PI));
 	}
 }
 
@@ -272,6 +237,12 @@ void refresh(int value)
 {
 	glutTimerFunc(1000 / 60, refresh, 0);
 	glutPostRedisplay();
+}
+
+void updateCameraSphericalCoordinates(float alpha, float beta, float r) {
+	camX = r * sin(alpha * DEG_TO_RAD) * cos(beta * DEG_TO_RAD);
+	camZ = r * cos(alpha * DEG_TO_RAD) * cos(beta * DEG_TO_RAD);
+	camY = r * sin(beta * DEG_TO_RAD);
 }
 
 void setCameraProjection() {
@@ -282,8 +253,8 @@ void setCameraProjection() {
 	case Camera::ORTHOGONAL:
 		ortho(-50 * camRatio, 50 * camRatio, -50, 50, 1, 1500);
 		break;
-	case Camera::PERSPECTIVE:
 	case Camera::CAR:
+	case Camera::PERSPECTIVE:
 		perspective(53.13f, camRatio, 0.1f, 1000.0f);
 		break;
 	default:
@@ -304,7 +275,10 @@ void changeSize(int w, int h) {
 	pauseQuad->resize(w, h);
 	gameOverQuad->resize(w, h);
 	restartQuad->resize(w, h);
-	lives->resize(w, h);
+	rearViewMirror->resize(w, h);
+	rearViewMirrorQuad->resize(w, h);
+	
+	gameMap->getLives()->resize(w, h);
 
 	// Prevent a divide by zero, when window is too short
 	if (h == 0)
@@ -319,8 +293,9 @@ void changeSize(int w, int h) {
 }
 
 void updateCarCamera() {
+	Car* car = gameMap->getCar();
 	float x = car->getX();
-	float y = car->getY();
+	float y = 1;//car->getY();
 	float z = car->getZ();
 	
 	float camLocal[4]{ camX, camY, camZ, 1 };
@@ -382,6 +357,8 @@ void renderLights() {
 		GLint plPos_uniformId = glGetUniformLocation(shader.getProgramIndex(), ss.str().c_str());
 		glUniform3fv(plPos_uniformId, 1, res);
 	}
+
+	gameMap->getCar()->moveSpotLights();
 }
 
 void renderObject(Object* obj) {
@@ -399,11 +376,21 @@ void renderObject(Object* obj) {
 		if (part.mesh.mat.texIndices[0] == ORANGE_TEX) { //check if it is orange
 			if (bumpmap) {
 				glActiveTexture(GL_TEXTURE1);
-				glBindTexture(GL_TEXTURE_2D, TextureArray[ORANGE_Norm]); //normal.tga
+				glBindTexture(GL_TEXTURE_2D, TextureArray[ORANGE_NORM]); //normal.tga
 				glUniform1i(texMode_uniformId, 2);
 				glUniform1i(tex_normalMap_loc, 1);
 			}
 		}
+
+		if (part.mesh.mat.texIndices[0] == SUGAR_TEX) {
+			glUniformMatrix4fv(view_uniformId, 1, GL_FALSE, mMatrix[VIEW]);
+
+			glUniform1i(reflect_perFragment_uniformId, 1); //reflected vector calculated in the fragment shader
+		}
+		else {
+			glUniform1i(reflect_perFragment_uniformId, 0);
+		}
+
 		loc = glGetUniformLocation(shader.getProgramIndex(), "mergeTextureWithColor");
 		glUniform1i(loc, part.mesh.mat.mergeTextureWithColor);
 		loc = glGetUniformLocation(shader.getProgramIndex(), "isHUD");
@@ -414,6 +401,7 @@ void renderObject(Object* obj) {
 
 			pushMatrix(MODEL);
 			translate(MODEL, part.position[0], part.position[1], part.position[2]);
+
 			if (cameraProjection == Camera::PERSPECTIVE)
 				l3dBillboardSphericalBegin(camWorld, worldPos);
 			else if (cameraProjection == Camera::CAR)
@@ -470,13 +458,13 @@ void renderObject(Object* obj) {
 }
 
 void render_flare(FLARE_DEF* flare, int lx, int ly, int* m_viewport) {
-	int     dx, dy;          // Screen coordinates of "destination"
-	int     px, py;          // Screen coordinates of flare element
-	int		cx, cy;
-	float    maxflaredist, flaredist, flaremaxsize, flarescale, scaleDistance;
-	int     width, height, alpha;    // Piece parameters;
-	int     i;
-	float	diffuse[4];
+	int dx, dy; // Screen coordinates of "destination"
+	int px, py; // Screen coordinates of flare element
+	int	cx, cy;
+	float maxflaredist, flaredist, flaremaxsize, flarescale, scaleDistance;
+	int width, height, alpha; // Piece parameters;
+	int i;
+	float diffuse[4];
 
 	GLint loc;
 
@@ -500,8 +488,8 @@ void render_flare(FLARE_DEF* flare, int lx, int ly, int* m_viewport) {
 	flarescale = (int)(m_viewport[2] * flare->fScale);
 
 	// Destination is opposite side of centre from source
-	dx = clampi(cx + (cx - lx), m_viewport[0], screenMaxCoordX);
-	dy = clampi(cy + (cy - ly), m_viewport[1], screenMaxCoordY);
+	dx = clampI(cx + (cx - lx), m_viewport[0], screenMaxCoordX);
+	dy = clampI(cy + (cy - ly), m_viewport[1], screenMaxCoordY);
 
 	// Render each element. To be used Texture Unit 0
 
@@ -511,18 +499,18 @@ void render_flare(FLARE_DEF* flare, int lx, int ly, int* m_viewport) {
 	for (i = 0; i < flare->nPieces; ++i)
 	{
 		// Position is interpolated along line between start and destination.
-		px = (int)((1.0f - flare->element[i].fDistance) * lx + flare->element[i].fDistance * dx);
-		py = (int)((1.0f - flare->element[i].fDistance) * ly + flare->element[i].fDistance * dy);
-		px = clampi(px, m_viewport[0], screenMaxCoordX);
-		py = clampi(py, m_viewport[1], screenMaxCoordY);
+		px = (int) ((1.0f - flare->element[i].fDistance) * lx + flare->element[i].fDistance * dx);
+		py = (int) ((1.0f - flare->element[i].fDistance) * ly + flare->element[i].fDistance * dy);
+		px = clampI(px, m_viewport[0], screenMaxCoordX);
+		py = clampI(py, m_viewport[1], screenMaxCoordY);
 
 		// Piece size are 0 to 1; flare size is proportion of screen width; scale by flaredist/maxflaredist.
-		width = (int)(scaleDistance * flarescale * flare->element[i].fSize);
+		width = (int) (scaleDistance * flarescale * flare->element[i].fSize);
 
 		// Width gets clamped, to allows the off-axis flaresto keep a good size without letting the elements get big when centered.
 		if (width > flaremaxsize)  width = flaremaxsize;
 
-		height = (int)((float)m_viewport[3] / (float)m_viewport[2] * (float)width);
+		height = (int) ((float) m_viewport[3] / (float) m_viewport[2] * (float) width);
 		memcpy(diffuse, flare->element[i].matDiffuse, 4 * sizeof(float));
 		diffuse[3] *= scaleDistance;   //scale the alpha channel
 
@@ -537,8 +525,8 @@ void render_flare(FLARE_DEF* flare, int lx, int ly, int* m_viewport) {
 			glActiveTexture(GL_TEXTURE0);
 			glBindTexture(GL_TEXTURE_2D, FlareTextureArray[flare->element[i].textureId]);
 			pushMatrix(MODEL);
-			translate(MODEL, (float)(px - width * 0.0f), (float)(py - height * 0.0f), 0.0f);
-			scale(MODEL, (float)width, (float)height, 1);
+			translate(MODEL, (float) (px - width * 0.0f), (float) (py - height * 0.0f), 0.0f);
+			scale(MODEL, (float) width, (float) height, 1);
 			computeDerivedMatrix(PROJ_VIEW_MODEL);
 			glUniformMatrix4fv(vm_uniformId, 1, GL_FALSE, mCompMatrix[VIEW_MODEL]);
 			glUniformMatrix4fv(pvm_uniformId, 1, GL_FALSE, mCompMatrix[PROJ_VIEW_MODEL]);
@@ -551,9 +539,7 @@ void render_flare(FLARE_DEF* flare, int lx, int ly, int* m_viewport) {
 			popMatrix(MODEL);
 		}
 	}
-	glEnable(GL_DEPTH_TEST);
 	glEnable(GL_CULL_FACE);
-	//glDisable(GL_BLEND);
 }
 
 void renderHUDShapes() {
@@ -564,27 +550,20 @@ void renderHUDShapes() {
 	loadIdentity(MODEL);
 	loadIdentity(VIEW);
 	loadIdentity(PROJECTION);
-
-	pushMatrix(VIEW);
-	loadIdentity(VIEW); //viewer at World origin, looking down at negative z direction
-
+	
 	ortho(-1, 1, -1, 1, -1, 1);
-
+	
 	glDisable(GL_DEPTH_TEST);
 	glDisable(GL_CULL_FACE);
 
-	if (gameOver) {
+	if (gameOver || gameMap->hasWon()) {
 		renderObject(gameOverQuad);
 		renderObject(restartQuad);
 	}
 	else if (paused) {
 		renderObject(pauseQuad);
 	}
-
-	renderObject(lives);
-
-	glEnable(GL_DEPTH_TEST);
-	glEnable(GL_CULL_FACE);
+	renderObject(gameMap->getLives());
 
 	popMatrix(MODEL);
 	popMatrix(VIEW);
@@ -604,27 +583,40 @@ void renderTextString(string text, float centerX, float centerY, float scale, fl
 void renderText() {
 	//Render text (bitmap fonts) in screen coordinates. So use ortoghonal projection with viewport coordinates.
 	glDisable(GL_DEPTH_TEST);
-	
+
 	int m_viewport[4];
 	glGetIntegerv(GL_VIEWPORT, m_viewport);
 
 	pushMatrix(MODEL);
 	pushMatrix(VIEW);
 	pushMatrix(PROJECTION);
-	
+
 	loadIdentity(MODEL);
 	loadIdentity(VIEW);
 	loadIdentity(PROJECTION);
 
 	ortho(m_viewport[0], m_viewport[0] + m_viewport[2] - 1, m_viewport[1], m_viewport[1] + m_viewport[3] - 1, -1, 1);
+	Car* car = gameMap->getCar();
+	/*
 	RenderText(shaderText, "X " + std::to_string(car->getX()) + " m", 25.0f, 125.0f, 0.5f, 0.5f, 0.5f, 0.8f);
 	RenderText(shaderText, "Z " + std::to_string(car->getZ()) + " m", 25.0f, 100.0f, 0.5f, 0.5f, 0.5f, 0.8f);
 	RenderText(shaderText, "Angle " + std::to_string(car->getAngle()) + " deg", 25.0f, 75.0f, 0.5f, 0.5f, 0.8f, 0.2f);
 	RenderText(shaderText, "Speed " + std::to_string(car->getSpeed()), 25.0f, 50.0f, 0.5f, 0.5f, 0.2f, 0.8f);
 	RenderText(shaderText, "Angular speed " + std::to_string(car->getAngularSpeed()), 25.0f, 25.0f, 0.5f, 0.5f, 0.8f, 0.2f);
-	
-	if (gameOver) {
-		renderTextString("GAME OVER", 0.5f, 0.65f, 0.003f, 1.0f, 0.3f, 0.2f);
+	*/
+	RenderText(shaderText, "Score: " + to_string(gameMap->getScore()),
+		25.0f, 125.0f, 1.0f, 0.2f, 0.4f, 0.8f);
+	RenderText(shaderText, "Lap " + to_string(gameMap->getLap()) + "/" + to_string(gameMap->getNumLaps()),
+		25.0f, 75.0f, 1.0f, 0.2f, 0.4f, 0.8f);
+	RenderText(shaderText, "Checkpoints: " + to_string(gameMap->getNumReachedCheckpoints()) + "/" + to_string(gameMap->getNumCheckpoints()),
+		25.0f, 25.0f, 1.0f, 0.2f, 0.4f, 0.8f);
+
+	if (gameOver || gameMap->hasWon()) {
+		string text = gameOver ? "GAME OVER" : "YOU WON";
+		float color1[] = { 1.0f, 0.3f, 0.2f };
+		float color2[] = { 0.3f, 1.0f, 0.2f };
+		float* color = gameOver ? color1 : color2;
+		renderTextString(text, 0.5f, 0.65f, 0.003f, color[0], color[1], color[2]);
 		renderTextString("Press R to restart.", 0.5f, 0.35f, 0.0015f, 1.0f, 1.0f, 1.0f);
 	}
 	else if (paused) {
@@ -636,18 +628,149 @@ void renderText() {
 	popMatrix(PROJECTION);
 
 	glEnable(GL_DEPTH_TEST);
-	glDisable(GL_BLEND);
 }
 
-void renderSkybox() {
+void renderFirework(Firework* particle, int deltaTime) {
+	glEnable(GL_BLEND);
+	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+	vector<Object::Part>* parts = particle->getParts();
+	particle->updateParticle(0.003f * deltaTime);
+
+	for (const Object::Part& part : *parts) {
+		GLint loc;
+
+		glActiveTexture(GL_TEXTURES[0]);
+		glBindTexture(GL_TEXTURE_2D, TextureArray[PARTICLE_TEX]);
+		glUniform1i(tex_loc[0], 0);
+
+		loc = glGetUniformLocation(shader.getProgramIndex(), "mergeTextureWithColor");
+		glUniform1i(loc, false);
+
+		loc = glGetUniformLocation(shader.getProgramIndex(), "mat.texCount");
+		glUniform1i(loc, -1);
+
+		glDepthMask(GL_FALSE);  //Depth Buffer Read Only
+
+		if (particle->isAlive()) {
+			particle->setDiffuse(0.882, 0.552, 0.211);
+
+			loc = glGetUniformLocation(shader.getProgramIndex(), "mat.diffuse");
+			glUniform4fv(loc, 1, particle->getDiffuse());
+
+			float worldPos[3]{ particle->getX(), particle->getY(), particle->getZ() };
+
+			pushMatrix(MODEL);
+			translate(MODEL, particle->getX(), particle->getY(), particle->getZ());
+			if (cameraProjection == Camera::PERSPECTIVE)
+				l3dBillboardSphericalBegin(camWorld, worldPos);
+			else if (cameraProjection == Camera::CAR)
+				l3dBillboardCylindricalBegin(camWorld, worldPos);
+
+			// send matrices to OGL
+			computeDerivedMatrix(PROJ_VIEW_MODEL);
+			glUniformMatrix4fv(vm_uniformId, 1, GL_FALSE, mCompMatrix[VIEW_MODEL]);
+			glUniformMatrix4fv(pvm_uniformId, 1, GL_FALSE, mCompMatrix[PROJ_VIEW_MODEL]);
+			computeNormalMatrix3x3();
+			glUniformMatrix3fv(normal_uniformId, 1, GL_FALSE, mNormal3x3);
+
+			// Render mesh
+			glBindVertexArray(part.mesh.vao);
+			glDrawElements(part.mesh.type, part.mesh.numIndexes, GL_UNSIGNED_INT, 0);
+			glBindVertexArray(0);
+
+			popMatrix(MODEL);
+		}
+		else num_dead_particles++;
+	}
+	glDepthMask(GL_TRUE); //make depth buffer again writeable
+}
+
+void draw_mirror() {
+	vector<Object::Part>* parts = table->getParts();
+
+	GLint loc;
+	for (const Object::Part& part : *parts) {
+		// textures
+		for (int t = 0; t < part.mesh.mat.texCount; t++) {
+			glUniform1i(texMode_uniformId, 0);
+			glActiveTexture(GL_TEXTURES[t]);
+			glBindTexture(GL_TEXTURE_2D, TextureArray[part.mesh.mat.texIndices[t]]);
+			glUniform1i(tex_loc[t], t);
+		}
+
+		loc = glGetUniformLocation(shader.getProgramIndex(), "mergeTextureWithColor");
+		glUniform1i(loc, part.mesh.mat.mergeTextureWithColor);
+		loc = glGetUniformLocation(shader.getProgramIndex(), "isHUD");
+		glUniform1i(loc, part.mesh.mat.isHUD);
+
+		// send the material
+		loc = glGetUniformLocation(shader.getProgramIndex(), "mat.ambient");
+		glUniform4fv(loc, 1, part.mesh.mat.ambient);
+		loc = glGetUniformLocation(shader.getProgramIndex(), "mat.diffuse");
+		glUniform4fv(loc, 1, part.mesh.mat.diffuse);
+		loc = glGetUniformLocation(shader.getProgramIndex(), "mat.specular");
+		glUniform4fv(loc, 1, part.mesh.mat.specular);
+		loc = glGetUniformLocation(shader.getProgramIndex(), "mat.shininess");
+		glUniform1f(loc, part.mesh.mat.shininess);
+		loc = glGetUniformLocation(shader.getProgramIndex(), "mat.texCount");
+		glUniform1i(loc, part.mesh.mat.texCount);
+		pushMatrix(MODEL);
+
+		translate(MODEL, table->getX(), table->getY(), table->getZ());
+		rotate(MODEL, table->getAngle(), 0, 1, 0);
+		rotate(MODEL, table->getRollAngle(), 0, 0, -1);
+		scale(MODEL, table->getScaleX(), table->getScaleY(), table->getScaleZ());
+		translate(MODEL, part.position[0], part.position[1], part.position[2]);
+		rotate(MODEL, part.angle, part.rotationAxis[0], part.rotationAxis[1], part.rotationAxis[2]);
+		scale(MODEL, part.scale[0], part.scale[1], part.scale[2]);
+
+		// send matrices to OGL
+		computeDerivedMatrix(PROJ_VIEW_MODEL);
+		glUniformMatrix4fv(vm_uniformId, 1, GL_FALSE, mCompMatrix[VIEW_MODEL]);
+		glUniformMatrix4fv(pvm_uniformId, 1, GL_FALSE, mCompMatrix[PROJ_VIEW_MODEL]);
+		computeNormalMatrix3x3();
+		glUniformMatrix3fv(normal_uniformId, 1, GL_FALSE, mNormal3x3);
+
+		// Render mesh
+		glBindVertexArray(part.mesh.vao);
+
+		if (!shader.isProgramValid()) {
+			cout << shader.getProgramInfoLog();
+			std::printf("Program Not Valid!\n");
+			exit(1);
+		}
+		glDrawElements(part.mesh.type, part.mesh.numIndexes, GL_UNSIGNED_INT, 0);
+		glBindVertexArray(0);
+
+		popMatrix(MODEL);
+	}
+}
+
+void renderSkybox(bool rear) {
 	glActiveTexture(GL_TEXTURE2);
 	glBindTexture(GL_TEXTURE_CUBE_MAP, TextureArray[SKY_TEX]);
 	glUniform1i(tex_skyBoxMap_loc, 2);
+	
+	if (camY > -0.1f && planar && !rear) {
+		glEnable(GL_STENCIL_TEST);
+		glClear(GL_STENCIL_BUFFER_BIT);     // Escrever 1 no stencil buffer onde se for desenhar a reflexão e a sombra
+		glStencilFunc(GL_NEVER, 0x1, 0x1);
+		glStencilOp(GL_REPLACE, GL_REPLACE, GL_REPLACE);
+
+		// Fill stencil buffer with Ground shape; never rendered into color buffer
+		draw_mirror();
+
+		// Desenhar apenas onde o stencil buffer não esta a 1
+		glStencilFunc(GL_NOTEQUAL, 0x1, 0x1);
+		glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
+	}
+	
 
 	glUniform1i(texMode_uniformId, 3);
 
 	//it won't write anything to the zbuffer; all subsequently drawn scenery to be in front of the sky box. 
 	glDepthMask(GL_FALSE);
+	glEnable(GL_DEPTH_TEST);
 	glFrontFace(GL_CW); // set clockwise vertex order to mean the front
 
 	pushMatrix(MODEL);
@@ -682,53 +805,419 @@ void renderSkybox() {
 	popMatrix(VIEW);
 	glFrontFace(GL_CCW); // restore counter clockwise vertex order to mean the front
 	glDepthMask(GL_TRUE);
-	glBindTexture(GL_TEXTURE_CUBE_MAP, 0);
 }
 
-void renderScene(void) {
+void aiRecursive_render(const aiScene* sc, const aiNode* nd)
+{
+	GLint loc;
 
-	int currentTime = glutGet(GLUT_ELAPSED_TIME);
-	int deltaTime = (paused || gameOver) ? 0 : currentTime - lastTime;
+	// Get node transformation matrix
+	aiMatrix4x4 m = nd->mTransformation;
+	// OpenGL matrices are column major
+	m.Transpose();
 
-	FrameCount++;
+	// save model matrix and apply node transformation
+	pushMatrix(MODEL);
 
-	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-	//The glyph contains background colors and non-transparent for the actual character pixels. So we use the blending
-	glEnable(GL_BLEND);
-	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-	// load identity matrices
-	loadIdentity(VIEW);
+	float aux[16];
+	memcpy(aux, &m, sizeof(float) * 16);
+	multMatrix(MODEL, aux);
+
+	Car* car = gameMap->getCar();
+	vector<Object::Part>* parts = car->getParts();
+
+	// draw all meshes assigned to this node
+	for (unsigned int n = 0; n < nd->mNumMeshes; ++n) {
+		// send the material
+		loc = glGetUniformLocation(shader.getProgramIndex(), "mat.ambient");
+		glUniform4fv(loc, 1, car->carMeshes[nd->mMeshes[n]].mat.ambient);
+		loc = glGetUniformLocation(shader.getProgramIndex(), "mat.diffuse");
+		glUniform4fv(loc, 1, car->carMeshes[nd->mMeshes[n]].mat.diffuse);
+		loc = glGetUniformLocation(shader.getProgramIndex(), "mat.specular");
+		glUniform4fv(loc, 1, car->carMeshes[nd->mMeshes[n]].mat.specular);
+		loc = glGetUniformLocation(shader.getProgramIndex(), "mat.emissive");
+		glUniform4fv(loc, 1, car->carMeshes[nd->mMeshes[n]].mat.emissive);
+
+		loc = glGetUniformLocation(shader.getProgramIndex(), "mat.texCount");
+		glUniform1i(loc, 1);
+		glUniform1i(reflect_perFragment_uniformId, 0);
+
+		if (car->carMeshes[nd->mMeshes[n]].mat.texCount > 0) {
+			// Bind texture
+			glActiveTexture(GL_TEXTURE0);
+			glBindTexture(GL_TEXTURE_2D, assimpTextures[car->carMeshes[nd->mMeshes[n]].texUnits[0]]);
+			glUniform1i(tex_loc[0], 0);
+		}
+
+		unsigned int  diffMapCount = 0;  //read 2 diffuse textures
+
+		glUniform1ui(diffMapCount_loc, 0);
+
+		if (car->carMeshes[nd->mMeshes[n]].mat.texCount != 0)
+			for (unsigned int i = 0; i < car->carMeshes[nd->mMeshes[n]].mat.texCount; ++i) {
+				if (car->carMeshes[nd->mMeshes[n]].texTypes[i] == DIFFUSE) {
+					if (diffMapCount == 0) {
+						diffMapCount++;
+						loc = glGetUniformLocation(shader.getProgramIndex(), "texmap");
+						glUniform1i(loc, car->carMeshes[nd->mMeshes[n]].texUnits[i]);
+						glUniform1ui(diffMapCount_loc, diffMapCount);
+					}
+					else if (diffMapCount == 1) {
+						diffMapCount++;
+						loc = glGetUniformLocation(shader.getProgramIndex(), "texmap1");
+						glUniform1i(loc, car->carMeshes[nd->mMeshes[n]].texUnits[i]);
+						glUniform1ui(diffMapCount_loc, diffMapCount);
+					}
+					else printf("Only supports a Material with a maximum of 2 diffuse textures\n");
+				}
+				else printf("Texture Map not supported\n");
+			}
+
+		// send matrices to OGL
+		computeDerivedMatrix(PROJ_VIEW_MODEL);
+		glUniformMatrix4fv(vm_uniformId, 1, GL_FALSE, mCompMatrix[VIEW_MODEL]);
+		glUniformMatrix4fv(pvm_uniformId, 1, GL_FALSE, mCompMatrix[PROJ_VIEW_MODEL]);
+		computeNormalMatrix3x3();
+		glUniformMatrix3fv(normal_uniformId, 1, GL_FALSE, mNormal3x3);
+
+		// bind VAO
+		glBindVertexArray(car->carMeshes[nd->mMeshes[n]].vao);
+
+		if (!shader.isProgramValid()) {
+			printf("Program Not Valid!\n");
+			exit(1);
+		}
+		// draw
+		glDrawElements(car->carMeshes[nd->mMeshes[n]].type, car->carMeshes[nd->mMeshes[n]].numIndexes, GL_UNSIGNED_INT, 0);
+		glBindVertexArray(0);
+	}
+
+	// draw all children
+	for (unsigned int n = 0; n < nd->mNumChildren; ++n) {
+		aiRecursive_render(sc, nd->mChildren[n]);
+	}
+	popMatrix(MODEL);
+	glUniform1ui(diffMapCount_loc, -1);
+}
+
+void renderCar() {
+	pushMatrix(MODEL);
+
+	Car* car = gameMap->getCar();
+	translate(MODEL, car->getX(), car->getY(), car->getZ());
+	rotate(MODEL, car->getAngle() + 90, 0, 1, 0);
+	scale(MODEL, 0.8f, 0.8f, 0.8f);
+
+	aiRecursive_render(scene, scene->mRootNode);
+
+	popMatrix(MODEL);
+}
+
+
+
+void renderMirror(int deltaTime) {
+	float res[4];
+	float mat[16];
+	GLfloat plano_chao[4] = { 0,1,0,0 };
+
+	glEnable(GL_DEPTH_TEST);
+	GLint shadowMode_uniformId = glGetUniformLocation(shader.getProgramIndex(), "shadowMode");
+
+
+	if (camY > -0.1f && planar) { //camera in front of the floor so render reflections and shadows. Inner product between the viewing direction and the normal of the ground
+		glEnable(GL_STENCIL_TEST);
+		glClear(GL_STENCIL_BUFFER_BIT);     // Escrever 1 no stencil buffer onde se for desenhar a reflexão e a sombra
+		glStencilFunc(GL_NEVER, 0x1, 0x1);
+		glStencilOp(GL_REPLACE, GL_REPLACE, GL_REPLACE);
+
+		// Fill stencil buffer with Ground shape; never rendered into color buffer
+		draw_mirror();
+
+		//iluminação phong
+		glUniform1i(shadowMode_uniformId, 0);
+
+		// Desenhar apenas onde o stencil buffer esta a 1
+		glStencilFunc(GL_EQUAL, 0x1, 0x1);
+		glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
+
+		// Render the reflected geometry
+
+		directionalLightPos[1] *= -1.0f;  //mirror the position of light
+		multMatrixPoint(MODEL, directionalLightPos, res);
+		GLint lPos_uniformId = glGetUniformLocation(shader.getProgramIndex(), "directionalLightPos");
+		glUniform3fv(lPos_uniformId, 1, res);
+
+		for (int i = 0; i < NUM_POINT_LIGHTS; i++) {
+			float res[4];
+			pointLightPos[i][1] *= -1.0f;  //mirror the position of light
+			multMatrixPoint(MODEL, pointLightPos[i], res);
+			stringstream ss;
+			ss.str("");
+			ss << "pointLightPos[" << i << "]";
+			GLint plPos_uniformId = glGetUniformLocation(shader.getProgramIndex(), ss.str().c_str());
+			glUniform3fv(plPos_uniformId, 1, res);
+		}
+
+		pushMatrix(MODEL);
+		scale(MODEL, 1.0f, -1.0f, 1.0f);
+		glCullFace(GL_FRONT);
+
+		for (Object* obj : gameObjects)
+			renderObject(obj);
+		renderCar();
+		//renderSkybox();
+
+		if (firework) {
+			for (Firework* particle : fireworks)
+				renderFirework(particle, deltaTime);
+
+			if (num_dead_particles == MAX_PARTICLES) {
+				firework = false;
+				num_dead_particles = 0;
+				fireworks.clear();
+				printf("All particles dead\n");
+			}
+		}
+
+		glCullFace(GL_BACK);
+		popMatrix(MODEL);
+
+		directionalLightPos[1] *= -1.0f;  //reset the light position
+		multMatrixPoint(MODEL, directionalLightPos, res);
+		lPos_uniformId = glGetUniformLocation(shader.getProgramIndex(), "directionalLightPos");
+		glUniform3fv(lPos_uniformId, 1, res);
+
+		for (int i = 0; i < NUM_POINT_LIGHTS; i++) {
+			float res[4];
+			pointLightPos[i][1] *= -1.0f;
+			multMatrixPoint(MODEL, pointLightPos[i], res);   //reset the light position
+			stringstream ss;
+			ss.str("");
+			ss << "pointLightPos[" << i << "]";
+			GLint plPos_uniformId = glGetUniformLocation(shader.getProgramIndex(), ss.str().c_str());
+			glUniform3fv(plPos_uniformId, 1, res);
+		}
+
+		glEnable(GL_BLEND);
+		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);   // Blend specular Ground with reflected geometry
+		draw_mirror();
+
+
+		// Render the Shadows
+		if (day) {
+			glUniform1i(shadowMode_uniformId, 1);  //Render with darker color
+			shadow_matrix(mat, plano_chao, directionalLightPos);
+
+			glDisable(GL_DEPTH_TEST);  //To force the shadow geometry to be rendered even if behind the floor
+
+			//Dark the color stored in color buffer
+			glBlendFunc(GL_DST_COLOR, GL_ZERO);
+			glStencilOp(GL_KEEP, GL_KEEP, GL_ZERO);
+
+			pushMatrix(MODEL);
+			multMatrix(MODEL, mat);
+			for (Object* obj : gameObjects)
+				renderObject(obj);
+			renderCar();
+
+			/*if (firework) {
+				for (Firework* particle : fireworks)
+					renderFirework(particle, deltaTime);
+
+				if (num_dead_particles == MAX_PARTICLES) {
+					firework = false;
+					num_dead_particles = 0;
+					fireworks.clear();
+					printf("All particles dead\n");
+				}
+			}*/
+			popMatrix(MODEL);
+		}
+		glDisable(GL_STENCIL_TEST);
+		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
+		glEnable(GL_DEPTH_TEST);
+		glUniform1i(shadowMode_uniformId, 0);
+	}
+	else {
+		glUniform1i(shadowMode_uniformId, 0);
+		draw_mirror();
+	}
+
+}
+
+void renderRearView(int deltaTime) {
+	pushMatrix(MODEL);
+	pushMatrix(VIEW);
+	pushMatrix(PROJECTION);
+
 	loadIdentity(MODEL);
+	loadIdentity(VIEW);
+	loadIdentity(PROJECTION);
+
+	ortho(-1, 1, -1, 1, -1, 1);
+
+	glDisable(GL_DEPTH_TEST);
+	glDisable(GL_CULL_FACE);
+
+	renderObject(rearViewMirrorQuad);
+
+	popMatrix(MODEL);
+	popMatrix(VIEW);
+	popMatrix(PROJECTION);
+	glEnable(GL_STENCIL_TEST);
+	pushMatrix(MODEL);
+	pushMatrix(VIEW);
+	pushMatrix(PROJECTION);
+
+	loadIdentity(MODEL);
+	loadIdentity(VIEW);
+	loadIdentity(PROJECTION);
+
+	ortho(-1, 1, -1, 1, -1, 1);
+
+	glClearStencil(0);
+	glClear(GL_STENCIL_BUFFER_BIT);
+
+	glStencilFunc(GL_NEVER, 0x1, 0x1);
+	glStencilOp(GL_REPLACE, GL_KEEP, GL_KEEP);
+
+	renderObject(rearViewMirror);
+
+	popMatrix(MODEL);
+	popMatrix(VIEW);
+	popMatrix(PROJECTION);
+
+	Car* car = gameMap->getCar();
+	float x = car->getX();
+	float y = car->getY();
+	float z = car->getZ();
+
+	float dirX = cos(car->getAngle() * DEG_TO_RAD);
+	float dirZ = sin(car->getAngle() * DEG_TO_RAD);
+
+	float backCamX = x + dirX;
+	float backCamY = 1.0;
+	float backCamZ = z - dirZ;
 	
-	setCameraLookAt();
-	
-	// use our shader
-	glUseProgram(shader.getProgramIndex());
+	GLint loc;
 
-	renderSkybox();
+	loc = glGetUniformLocation(shader.getProgramIndex(), "headlights");
+	glUniform1i(loc, false);
+	loc = glGetUniformLocation(shader.getProgramIndex(), "reflect");
+	glUniform1i(loc, true);
+	//loc = glGetUniformLocation(shader.getProgramIndex(), "candles");
+	//glUniform1i(loc, false);
 
-	renderLights();
+	loadIdentity(VIEW);
+	loadIdentity(PROJECTION);
+	perspective(53.13f, camRatio, 0.1f, 10000);
+	lookAt(backCamX, backCamY, backCamZ,
+		backCamX - dirX, 0.65, backCamZ + dirZ,
+		0, 1, 0);
 
-	for (Object* obj : gameObjects)
-		obj->update(deltaTime);
+	glStencilFunc(GL_EQUAL, 0x1, 0x1);
+	glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
 
+	glClearDepth(1);
+	glClear(GL_DEPTH_BUFFER_BIT);
+
+	glEnable(GL_DEPTH_TEST);
 	for (Object* obj : gameObjects)
 		renderObject(obj);
+	renderCar();
+	draw_mirror();
+	renderSkybox(true);
 
-	for (Object* obj : gameObjects)
-		obj->handleCollision();
 
 	if (firework) {
 		for (Firework* particle : fireworks)
-			renderFirework(particle);
+			renderFirework(particle, deltaTime);
 
-		glDepthMask(GL_TRUE);  //Depth Buffer Read Only
 		if (num_dead_particles == MAX_PARTICLES) {
 			firework = false;
 			num_dead_particles = 0;
 			fireworks.clear();
 			printf("All particles dead\n");
 		}
+	}
+
+	loc = glGetUniformLocation(shader.getProgramIndex(), "headlights");
+	glUniform1i(loc, true);
+	loc = glGetUniformLocation(shader.getProgramIndex(), "reflect");
+	glUniform1i(loc, false);
+}
+
+void resetUniforms() {
+	GLint loc;
+	loc = glGetUniformLocation(shader.getProgramIndex(), "mergeTextureWithColor");
+	glUniform1i(loc, false);
+	loc = glGetUniformLocation(shader.getProgramIndex(), "isHUD");
+	glUniform1i(loc, false);
+}
+
+
+void renderScene(void) {
+
+	int currentTime = glutGet(GLUT_ELAPSED_TIME);
+	int deltaTime = (gameOver || paused || gameMap->hasWon()) ? 0 : currentTime - lastTime;
+	int fireworksDeltaTime = (gameOver || paused) ? 0 : currentTime - lastTime;
+
+	FrameCount++;
+
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+	glEnable(GL_DEPTH_TEST);
+	// load identity matrices
+	loadIdentity(VIEW);
+	loadIdentity(MODEL);
+	
+	//setCameraLookAt();
+	
+	// use our shader
+	glUseProgram(shader.getProgramIndex());
+
+	resetUniforms();
+
+	
+	//The glyph contains background colors and non-transparent for the actual character pixels. So we use the blending
+	glEnable(GL_BLEND);
+	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
+	gameMap->getCar()->update(deltaTime);
+
+	setCameraLookAt();
+
+	renderLights();
+
+	for (Object* obj : gameObjects)
+		obj->update(deltaTime);
+	
+	renderSkybox(false);
+
+	renderMirror(deltaTime);
+
+	for (Object* obj : gameObjects)
+		renderObject(obj);
+
+	renderCar();
+
+	for (Object* obj : gameObjects)
+		obj->handleCollision();
+
+	if (firework) {
+		for (Firework* particle : fireworks)
+			renderFirework(particle, fireworksDeltaTime);
+
+		if (num_dead_particles == MAX_PARTICLES) {
+			firework = false;
+			num_dead_particles = 0;
+			fireworks.clear();
+			printf("All particles dead\n");
+		}
+	}
+	else if (gameMap->hasWon()) {
+		initFireworks(gameMap->getCar()->getX(), gameMap->getCar()->getZ());
+		firework = true;
 	}
 
 	if (flare && candles) {
@@ -751,23 +1240,38 @@ void renderScene(void) {
 		loadIdentity(PROJECTION);
 		pushMatrix(VIEW);
 		loadIdentity(VIEW);
-		ortho(m_viewport[0], m_viewport[0] + m_viewport[2] - 1, m_viewport[1], m_viewport[1] + m_viewport[3] - 1, -1, 1);
-		render_flare(&AVTflare, flarePos[0], flarePos[1], m_viewport);
+		if (lightScreenPos[2] < 1) {
+			ortho(m_viewport[0], m_viewport[0] + m_viewport[2] - 1, m_viewport[1], m_viewport[1] + m_viewport[3] - 1, -1, 1);
+			render_flare(&AVTflare, flarePos[0], flarePos[1], m_viewport);
+		}
 		popMatrix(PROJECTION);
 		popMatrix(VIEW);
 	}
+
+
+
+	if (rearView && cameraProjection == Camera::CAR) {
+		renderRearView(deltaTime);
+	}
+	else {
+		glClearStencil(0x0);
+		glClear(GL_STENCIL_BUFFER_BIT);
+	}
+
+	glStencilFunc(GL_NOTEQUAL, 0x1, 0x1);
+	glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
 
 	if (showText) {
 		renderHUDShapes();
 		renderText();
 	}
 
-	if (lives->areEmpty())
+	if (gameMap->getLives()->areEmpty())
 		gameOver = true;
 
 	lastTime = currentTime;
-
 	glBindTexture(GL_TEXTURE_2D, 0);
+	glBindTexture(GL_TEXTURE_CUBE_MAP, 0);
 	glDisable(GL_BLEND);
 	glutSwapBuffers();
 }
@@ -775,8 +1279,7 @@ void renderScene(void) {
 void restartGame() {
 	paused = false;
 	gameOver = false;
-	lives->reset();
-	car->reset();
+	gameMap->reset();
 }
 
 // ------------------------------------------------------------
@@ -786,12 +1289,12 @@ void restartGame() {
 
 void processKeys(unsigned char key, int xx, int yy)
 {
-	switch(key) {
+	switch (key) {
 	case 27:
 		glutLeaveMainLoop();
 		break;
 
-	case 'c': 
+	case 'c':
 		std::printf("Camera Spherical Coordinates (%f, %f, %f)\n", alpha, beta, r);
 		break;
 	case 'm': glEnable(GL_MULTISAMPLE); break;
@@ -802,16 +1305,25 @@ void processKeys(unsigned char key, int xx, int yy)
 	case '2':
 		cameraProjection = Camera::PERSPECTIVE; setCameraProjection(); break;
 	case '3':
-		cameraProjection = Camera::CAR; setCameraProjection(); break;
-
+		cameraProjection = Camera::CAR; 
+		alpha = ALPHA_START, beta = BETA_START, r = R_START;
+		updateCameraSphericalCoordinates(alpha, beta, r);
+		setCameraProjection(); 
+		break;
+	case '4':
+		cameraProjection = Camera::CAR;
+		alpha = ALPHA_START, beta = 0.0f, r = 0.5f;
+		updateCameraSphericalCoordinates(alpha, beta, r);
+		setCameraProjection();
+		break;
 	case 'w':
-		car->accelerate(true); break;
+		gameMap->getCar()->accelerate(true); break;
 	case 's':
-		car->accelerateBack(true); break;
+		gameMap->getCar()->accelerateBack(true); break;
 	case 'a':
-		car->turnLeft(true); break;
+		gameMap->getCar()->turnLeft(true); break;
 	case 'd':
-		car->turnRight(true); break;
+		gameMap->getCar()->turnRight(true); break;
 	case 'o': // night mode
 		if (!dayKey) {
 			dayKey = true;
@@ -848,7 +1360,7 @@ void processKeys(unsigned char key, int xx, int yy)
 			paused = !paused;
 		}
 		break;
-	
+
 	case 'k': //fireworks
 		if (!fireworkKey) {
 			if (firework) {
@@ -856,7 +1368,7 @@ void processKeys(unsigned char key, int xx, int yy)
 				fireworks.clear();
 			}
 			else {
-				initFireworks();
+				initFireworks(gameMap->getCar()->getX(), gameMap->getCar()->getZ());
 				fireworkKey = true;
 				firework = true;
 			}
@@ -876,13 +1388,29 @@ void processKeys(unsigned char key, int xx, int yy)
 			bumpmap = !bumpmap;
 		}
 		break;
-	
+
 	case 'r': // restart
 		if (!pausedKey) {
 			restartKey = true;
 			restartGame();
 		}
 		break;
+
+	case 'z': // rearView
+		if (!rearViewKey) {
+			rearViewKey = true;
+			rearView = !rearView;
+		}
+		break;
+	
+	case 'x': //planar reflections and shadows
+		if (!planarKey) {
+			planarKey = true;
+			planar = !planar;
+			table->setTranslucent(planar);
+		}
+		break;
+
 	}
 }
 
@@ -890,13 +1418,13 @@ void processKeysUp(unsigned char key, int xx, int yy)
 {
 	switch (key) {
 	case 'w':
-		car->accelerate(false); break;
+		gameMap->getCar()->accelerate(false); break;
 	case 's':
-		car->accelerateBack(false); break;
+		gameMap->getCar()->accelerateBack(false); break;
 	case 'a':
-		car->turnLeft(false); break;
+		gameMap->getCar()->turnLeft(false); break;
 	case 'd':
-		car->turnRight(false); break;
+		gameMap->getCar()->turnRight(false); break;
 	case 'o':
 		dayKey = false; break;
 	case 'p':
@@ -911,13 +1439,17 @@ void processKeysUp(unsigned char key, int xx, int yy)
 		pausedKey = false; break;
 	case 'g':
 		flareKey = false; break;
-	case 'k':
-		fireworkKey = false; break;
 	case 'b':
 		bumpmapKey = false; break;
+	case 'k':
+		fireworkKey = false; break;
 	case 'r':
 		restartKey = false; break;
-	}
+	case 'z':
+		rearViewKey = false; break;
+	case 'x':
+		planarKey = false; break;
+	} 
 }
 
 // ------------------------------------------------------------
@@ -990,9 +1522,7 @@ void processMouseMotion(int xx, int yy)
 		}
 
 		if (tracking == 1 || tracking == 2) {
-			camX = rAux * sin(alphaAux * DEG_TO_RAD) * cos(betaAux * DEG_TO_RAD);
-			camZ = rAux * cos(alphaAux * DEG_TO_RAD) * cos(betaAux * DEG_TO_RAD);
-			camY = rAux * sin(betaAux * DEG_TO_RAD);
+			updateCameraSphericalCoordinates(alphaAux, betaAux, rAux);
 		}
 	}
 
@@ -1040,13 +1570,17 @@ GLuint setupShaders() {
 
 	texMode_uniformId = glGetUniformLocation(shader.getProgramIndex(), "texMode"); // different modes of texturing
 	pvm_uniformId = glGetUniformLocation(shader.getProgramIndex(), "m_pvm");
+	view_uniformId = glGetUniformLocation(shader.getProgramIndex(), "m_View");
 	model_uniformId = glGetUniformLocation(shader.getProgramIndex(), "m_Model");
 	vm_uniformId = glGetUniformLocation(shader.getProgramIndex(), "m_viewModel");
 	normal_uniformId = glGetUniformLocation(shader.getProgramIndex(), "m_normal");
 	tex_loc[0] = glGetUniformLocation(shader.getProgramIndex(), "texmap");
 	tex_loc[1] = glGetUniformLocation(shader.getProgramIndex(), "texmap1");
+	diffMapCount_loc = glGetUniformLocation(shader.getProgramIndex(), "diffMapCount");
 	tex_normalMap_loc = glGetUniformLocation(shader.getProgramIndex(), "normalMap");
 	tex_skyBoxMap_loc = glGetUniformLocation(shader.getProgramIndex(), "skyBoxMap");
+	reflect_perFragment_uniformId = glGetUniformLocation(shader.getProgramIndex(), "reflect_perFrag"); //reflection vector calculated in the frag shader
+
 
 	std::printf("InfoLog for Per Fragment Phong Lightning Shader\n%s\n\n", shader.getAllInfoLogs().c_str());
 
@@ -1072,12 +1606,13 @@ void createScene() {
 	glGenTextures(NUM_TEXTURES, TextureArray);
 	Texture2D_Loader(TextureArray, "img/stone.tga", STONE_TEX);
 	Texture2D_Loader(TextureArray, "img/lightwood.tga", WOOD_TEX);
-	Texture2D_Loader(TextureArray, "img/square-tiled-texture.jpg", CHECKERS_TEX);
+	Texture2D_Loader(TextureArray, "img/water_drops.jpeg", CHECKERS_TEX);
 	Texture2D_Loader(TextureArray, "img/orangeTex.png", ORANGE_TEX);
-	Texture2D_Loader(TextureArray, "img/Orange_001_NORM.jpg", ORANGE_Norm);
+	Texture2D_Loader(TextureArray, "img/Orange_001_NORM.jpg", ORANGE_NORM);
 	Texture2D_Loader(TextureArray, "img/tree.tga", TREE_TEX);
 	Texture2D_Loader(TextureArray, "img/particle.tga", PARTICLE_TEX);
 	Texture2D_Loader(TextureArray, "img/heart.png", LIFE_TEX);
+	Texture2D_Loader(TextureArray, "img/sugar.jpg", SUGAR_TEX);
 
 	//Sky Box Texture Object
 	const char* filenames[] = { "img/posx.jpg", "img/negx.jpg", "img/posy.jpg", "img/negy.jpg", "img/posz.jpg", "img/negz.jpg" };
@@ -1094,76 +1629,32 @@ void createScene() {
 
 	//Create skybox
 	skybox = new Skybox();
+	
+	gameMap = new Map(&shader);
+	table = gameMap->getTable();
 
-	//createTable();
-	gameObjects.push_back(new Table());
+	float** pointLightPositions = gameMap->getPointLightPositions();
+	for (int i = 0; i < NUM_POINT_LIGHTS; i++)
+		memcpy(pointLightPos + i, pointLightPositions[i], 4 * sizeof(float));
 
-	lives = new Lives(-0.6f, 0.8f, 0.08f, NUM_LIVES);
-
-	car = new Car(&shader, 2.0f, 1.0f, lives);
-	gameObjects.push_back(car);
-
-	for (int o = 0; o < NUM_ORANGES; o++)
-		gameObjects.push_back(new Orange(car));
-
-	float butterPositions[] {
-		14, 1,
-		19, -0.75f,
-		28, 1
-	};
-
-	float butterSizes[] {
-		2.0f, 1.0f,
-		2.0f, 1.0f,
-		1.0f, 2.0f
-	};
-	for (int i = 0; i < sizeof(butterPositions) / (sizeof(float) * 2); i++)
-	{
-		Butter* b = new Butter(
-			butterPositions[2 * i], 0, butterPositions[2 * i + 1],
-			butterSizes[2 * i], butterSizes[2 * i + 1], car);
-		gameObjects.push_back(b);
-	}
-
-	float signs[]{ -1, 1 };
-
-	for (int sign = 0; sign < 2; sign++) {
-		float zSign = signs[sign];
-
-		for (float x = -40.0f; x <= 40.0f; x += 2) {
-			Cheerio* c = new Cheerio(x, 0.1f, 3.0f * zSign, 0.4f, car);
-			gameObjects.push_back(c);
-		}
-	}
-
-	float candlePositions[] {
-		-35.0f, -35.0f,
-		-35.0f, 35.0f,
-		35.0f, -35.0f,
-		35.0f, 35.0f,
-		0.0f, -15.0f,
-		0.0, 15.0f
-	};
-
-	for (int i = 0; i < sizeof(candlePositions) / (2 * sizeof(float)); i++)
-		gameObjects.push_back(new Candle(
-			candlePositions[2 * i], 0, candlePositions[2 * i + 1], 3.5f));
-
-	gameObjects.push_back(new Tree(0, 2.5f, 25));
-	gameObjects.push_back(new Tree(0, 2.5f, -25));
-
-	gameObjects.push_back(new Pawn());
+	gameObjects = gameMap->getGameObjects();
 
 	pauseQuad = new ScreenQuad(0, 0.3f, 0.15f, 0.2f);
 	gameOverQuad = new ScreenQuad(0, 0.3f, 0.2f, 0.2f);
 	restartQuad = new ScreenQuad(0, -0.3f, 0.1f, 0.15f);
+	
+	rearViewMirror = new ScreenQuad(0, 0.7f, 0.15f, 0.4f);
+	rearViewMirrorQuad = new ScreenQuad(0, 0.7, 0.16f, 0.4f, 0.0f, 0.0f, 0.0f, 1.0f);
 
 	// create geometry and VAO of the quad for flare elements
 	flareQuad = createQuad(1, 1);
 	flareQuad.mat.texCount = 1;
 
+
 	//Load flare from file
 	loadFlareFile(&AVTflare, "flare.txt");
+
+	//gameObjects.push_back(new MirrorCube());
 }
 
 void init()
@@ -1198,8 +1689,6 @@ void init()
 	glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
 }
 
-
-
 // ------------------------------------------------------------
 //
 // Main function
@@ -1226,8 +1715,8 @@ int main(int argc, char **argv) {
 	glutReshapeFunc(changeSize);
 
 	glutTimerFunc(0, timer, 0);   // Use it to count number of frames rendered per second
-	//glutIdleFunc(renderScene);  // Use it for maximum performance
-	glutTimerFunc(0, refresh, 0);    //use it to to get 60 FPS whatever
+	glutIdleFunc(renderScene);  // Use it for maximum performance
+	//glutTimerFunc(0, refresh, 0);    //use it to to get 60 FPS whatever
 
 //	Mouse and Keyboard Callbacks
 	glutKeyboardFunc(processKeys);

@@ -4,7 +4,6 @@
 using namespace Utils;
 
 Tree::Tree(float x, float y, float z) {
-
 	float amb[] = { 1.0f, 0.2f, 0.2f, 1.0f };
 	float diff[] = { 0.4f, 0.4f, 0.4f, 1.0f };
 	float spec[] = { 0.2f, 0.2f, 0.2f, 1.0f };

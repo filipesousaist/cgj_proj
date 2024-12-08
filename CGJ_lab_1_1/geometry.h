@@ -1,6 +1,14 @@
 
 #pragma once
 #include <GL/glew.h>
+#include "assimp/Importer.hpp"
+#include "assimp/postprocess.h"
+#include "assimp/scene.h"
+#include "Texture_Loader.h"
+#include "VertexAttrDef.h"
+#include "AVTmathLib.h"
+
+
 
 #define MAX_TEXTURES 8
 
@@ -28,6 +36,7 @@ struct MyMesh {
 	struct Material mat;
 };
 
+//std::vector<struct MyMesh> createMeshFromAssimp(const std::string& filepath);
 MyMesh createCube();
 MyMesh createQuad(float size_x, float size_y);
 MyMesh createSphere(float radius, int divisions);

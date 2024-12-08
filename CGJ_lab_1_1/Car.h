@@ -4,7 +4,18 @@
 
 #include "Object.h"
 #include "Lives.h"
+#include "Map.h"
 
+class Map;
+
+#ifndef CAR_H
+#define CAR_H
+
+const float ACC = 1e-5f;
+const float ANG_SPEED = 1.2e-2f;
+const float MAX_SPEED = 2.5e-3f;
+
+#endif // CAR_H
 
 class Car : public Object
 {
@@ -29,25 +40,24 @@ private:
 	
 	Lives* lives;
 
+	float spawnX;
+	float spawnZ;
+	float spawnAngle;
+
+	Map* map;
+	Lives* lives;
+
 	void movePosition(int deltaTime);
 	void moveAngle(int deltaTime);
-	void moveSpotLights();
 
 	void move(int deltaTime);
-	void addParts(float sizeX, float sizeZ);
 
-	void addBody(float sizeX, float sizeZ);
-	void addWheels();
 	void addSpotLights();
-	
-public:
-	Car::Car(VSShaderLib* shader, float sizeX, float sizeZ, Lives* lives);
 
-	void accelerate(bool active);
-	void accelerateBack(bool active);
-	
-	void stop();
-	void reset();
+public:
+	Car::Car(VSShaderLib* shader, float sizeX, float sizeZ, Map* map, Lives* lives);
+
+	vector<MyMesh> carMeshes;
 
 	void loseLife();
 	void restoreLives();
@@ -55,6 +65,16 @@ public:
 
 	void turnLeft(bool active);
 	void turnRight(bool active);
+
+	void accelerate(bool active);
+	void accelerateBack(bool active);
+
+	void stop();
+	void reset();
+	void setSpawnPoint(float x, float z, float angle);
+	void moveSpotLights();
+
+	void loseLife();
 
 	float getSpeed() {
 		return speed;

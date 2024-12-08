@@ -1,15 +1,18 @@
 #pragma once
-#include "Object.h"
-
 #include <string>
-#include "Car.h"
+#include <vector>
+
+#include "Object.h"
+#include "Map.h"
 
 class Orange : public Object
 {
 private:
+	static vector<float*> spawnPoints;
+
 	float speed;
 
-	Car* car;
+	Map* map;
 
 	void spawnRandomly(float initialSpeed);
 
@@ -20,7 +23,11 @@ private:
 	void addParts();
 
 public:
-	Orange::Orange(Car* car);
+	Orange::Orange(Map* map);
+
+	static void addSpawnPoint(float x, float z);
+
+	void reset();
 	
 	void handleCollision();
 };

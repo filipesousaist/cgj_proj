@@ -37,4 +37,3 @@ void ScreenQuad::resize(float windowWidth, float windowHeight) {
 
 	this->scaleX = this->scaleY * windowAspectRatio / this->aspectRatio;
 }
-

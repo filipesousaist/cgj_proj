@@ -1,7 +1,6 @@
 #pragma once
 #include "ScreenQuad.h"
 
-
 class Lives : public ScreenQuad
 {
 private:
@@ -14,4 +13,3 @@ public:
 	void reset();
 	bool areEmpty();
 };
-

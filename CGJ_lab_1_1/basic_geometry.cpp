@@ -7,22 +7,32 @@ Basic Revolution Geometry
  João Madeiras Pereira
 ----------------------------------------------------*/
 #include <string>
-#include <assert.h>
 #include <stdlib.h>
-#include <vector>
+#include <assert.h>
+#include <iostream>
+#include <sstream>
+#include <fstream>
+
 
 // include GLEW to access OpenGL 3.3 functions
 #include <GL/glew.h>
 
 // GLUT is the toolkit to interface with the OS
 #include <GL/freeglut.h>
-#include "AVTmathLib.h"
-#include "VertexAttrDef.h"
 #include "geometry.h"
 #include "cube.h"
 
 
 GLuint VboId[2];
+
+
+using namespace std;
+
+
+#define aisgl_min(x,y) (x<y?x:y)
+#define aisgl_max(x,y) (y>x?y:x)
+
+
 
 MyMesh createQuad(float size_x, float size_y) {
 	

@@ -4,6 +4,6 @@ class Pawn :
     public Object
 {
 public:
-    Pawn::Pawn();
+    Pawn::Pawn(float x, float z);
 };
 

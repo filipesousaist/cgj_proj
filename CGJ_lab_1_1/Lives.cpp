@@ -15,19 +15,19 @@ Lives::Lives(float x, float y, float scaleY, int num) :
 	int texIndices[] = { LIFE_TEX, NO_TEX };
 	bool mergeTextureWithColor = false;
 	bool isHUD = true;
-	
+
 	mesh = createQuad(1, 1);
 	setMeshProperties(&mesh, amb, diff, spec, emissive, shininess, texIndices, mergeTextureWithColor, isHUD);
-	
+
 	n = 0;
 	maxN = num;
-	
+
 	reset();
 }
 
 void Lives::loseLife() {
 	if (n > 0) {
-		-- n;
+		--n;
 		removeLastPart();
 	}
 }
@@ -37,7 +37,7 @@ void Lives::reset() {
 		addPart(mesh,
 			1.0f / maxN * (n - (maxN - 1) * 0.5f), 0.0f, 0.0f,
 			LIFE_SCALE / maxN, LIFE_SCALE, 1.0f);
-		++ n;
+		++n;
 	}
 }
 

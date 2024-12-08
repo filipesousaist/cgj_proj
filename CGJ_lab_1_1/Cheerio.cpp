@@ -21,7 +21,7 @@ Cheerio::Cheerio(float x, float y, float z, float radius, Car* car) {
 	this->car = car;
 
 	if (!isMeshCreated) {
-		float amb[] = { 0.6f, 0.48f, 0.0f, 1.0f };
+		float amb[] = { 0.15f, 0.1f, 0.0f, 1.0f };
 		float diff[] = { 0.6f, 0.4f, 0.1f, 1.0f };
 		float spec[] = { 0.15f, 0.15f, 0.15f, 1.0f };
 		float emissive[] = { 0.0f, 0.0f, 0.0f, 1.0f };
