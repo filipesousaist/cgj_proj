@@ -328,7 +328,7 @@
     <Image Include="img\posz.jpg">
       <Filter>Resource Files\Images</Filter>
     </Image>
-    <Image Include="..\..\..\..\Downloads\heart.png">
+    <Image Include="img\heart.png">
       <Filter>Resource Files\Images</Filter>
     </Image>
     <Image Include="img\sugar.jpg">

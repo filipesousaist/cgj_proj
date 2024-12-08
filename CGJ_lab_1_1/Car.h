@@ -15,7 +15,6 @@ const float ACC = 1e-5f;
 const float ANG_SPEED = 1.2e-2f;
 const float MAX_SPEED = 2.5e-3f;
 
-#endif // CAR_H
 
 class Car : public Object
 {
@@ -37,8 +36,6 @@ private:
 
 	bool canMoveBack = true;
 	bool canMoveFront = true;
-	
-	Lives* lives;
 
 	float spawnX;
 	float spawnZ;
@@ -74,8 +71,6 @@ public:
 	void setSpawnPoint(float x, float z, float angle);
 	void moveSpotLights();
 
-	void loseLife();
-
 	float getSpeed() {
 		return speed;
 	}
@@ -87,3 +82,5 @@ public:
 		return colliderSize;
 	}
 };
+
+#endif // CAR_H

@@ -32,10 +32,6 @@ void Object::addPart(MyMesh mesh, float x, float y, float z) {
 	addPart(mesh, x, y, z, 1, 1, 1, 0, 1, 0, 0);
 }
 
-void Object::removeLastPart() {
-	parts->pop_back();
-}
-
 void Object::addPart(MyMesh mesh) {
 	addPart(mesh, 0, 0, 0, 1, 1, 1, 0, 1, 0, 0);
 }

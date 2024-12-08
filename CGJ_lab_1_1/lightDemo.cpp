@@ -138,9 +138,6 @@ GLuint FlareTextureArray[NUM_FLARE_TEXTURES];
 
 extern GLuint* assimpTextures;
 
-int windowWidth = 0;
-int windowHeight = 0;
-
 //Flare effect
 FLARE_DEF AVTflare;
 float lightScreenPos[3];  //Position of the light in Window Coordinates
